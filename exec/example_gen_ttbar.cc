@@ -540,7 +540,7 @@ int main() {
 
   // use array branches when the group can have more than one element and we are interested in them all
   // in this case, in addition to the attribute array branches, one also gets the n_groupname branch
-  //tree_gen.make_array_branches(gen_particle, "mass", "pt", "eta", "phi", "pdg", "dileptonic_ttbar");
+  tree_gen.make_array_branches(gen_particle, "mass", "pt", "eta", "phi", "pdg", "dileptonic_ttbar");
 
   // to add more branches simply call the make_*_branches again
   // note: each group can contribute branches to a tree exactly once
@@ -592,6 +592,8 @@ int main() {
     // which is true if it is non-null (i.e. contains some elements)
     if (passllbb) {
       hist_cut.fill();
+
+      gen_particle.update_indices( gen_particle.filter_not("dileptonic_ttbar", 0) );
       tree_gen.fill();
     }
   };
