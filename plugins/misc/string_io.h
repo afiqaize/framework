@@ -9,8 +9,11 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <cstring>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <functional>
 
 /// string replacement - replaces the first occurence only
 inline bool replace(std::string &str, const std::string &from, const std::string &to) {
@@ -54,9 +57,9 @@ std::string to_str(Number num, const int prec = -1, const bool fixed = false)
 
 
 
-/// tokenize a string i.e. split a string into multiple strings by a separator
+/// split a string into multiple strings by a separator
 /// returns a vector of string; vector contains original string if separator isn't present within it
-std::vector<std::string> tokenize(const std::string &str, const std::string &sep = ",")
+std::vector<std::string> split(const std::string &str, const std::string &sep = ",")
 {
   std::vector<std::string> v_str = {};
   std::string::size_type isep = str.find(sep), iini = 0;
@@ -66,6 +69,26 @@ std::vector<std::string> tokenize(const std::string &str, const std::string &sep
     isep = str.find(sep, iini);
   }
   v_str.emplace_back( str.substr(iini, isep - iini) );
+
+  return v_str;
+}
+
+
+
+/// like the above, but based on a predicate instead of equality
+/// unlike the above, if no character in string satisfies predicate, returned vector is empty
+template <typename Predicate>
+std::vector<std::string> split_if(const std::string &str, Predicate &&predicate)
+{
+  std::vector<std::string> v_str = {};
+  auto itr = std::find_if(std::begin(str), std::end(str), predicate);
+  auto ifa = std::find_if(std::next(itr), std::end(str), std::not_fn(predicate));
+
+  while (itr != std::end(str)) {
+    v_str.emplace_back( str.substr(std::distance(std::begin(str), itr), std::distance(std::begin(str), ifa) - std::distance(std::begin(str), itr)) );
+    itr = std::find_if(std::next(ifa), std::end(str), predicate);
+    ifa = std::find_if(std::next(itr), std::end(str), std::not_fn(predicate));
+  }
 
   return v_str;
 }
@@ -84,6 +107,19 @@ std::string& strip(std::string &str, const std::string &sub = " ")
 
   return str;
 }
+
+
+
+/// joins/concatenate strings with the indicated separator
+std::string join(std::vector<std::string> &strs, const std::string &sep = " ")
+{
+  auto str = (strs.empty()) ? "" : strs[0];
+  for (int istr = 1; istr < strs.size(); ++istr)
+    str += sep + strs[istr];
+
+  return str;
+}
+
 
 
 /// returns a logging function to a desired stream

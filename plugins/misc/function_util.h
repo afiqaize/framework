@@ -11,7 +11,7 @@
 #include "TH2.h"
 #include "TH3.h"
 
-// a function that performs a simple copy of the argument
+/// a function that performs a simple copy of the argument
 template <typename T = float>
 T identity(T t)
 {
@@ -20,7 +20,7 @@ T identity(T t)
 
 
 
-// fillers for the histogram class
+/// fillers for the histogram class
 template <typename ...Groups>
 auto filler_count(const Groups &...groups)
 {
@@ -79,8 +79,8 @@ auto filler_all_of(const Group &group, Attributes &&...attrs)
 
 
 
-// a or b or c or ... in function form
-// call any_of<N> to get a function that takes N bools and return the OR of them all
+/// a or b or c or ... in function form
+/// call any_of<N> to get a function that takes N bools and return the OR of them all
 template <typename ...Bools>
 bool any_of_impl(Bools ...bools)
 {
@@ -105,8 +105,8 @@ auto any_of() -> decltype(any_of_helper(std::make_index_sequence<N>{}))
 
 
 
-// a and b and c and ... in function form
-// call all_of<N> to get a function that takes N bools and return the AND of them all
+/// a and b and c and ... in function form
+/// call all_of<N> to get a function that takes N bools and return the AND of them all
 template <typename ...Bools>
 bool all_of_impl(Bools ...bools)
 {
@@ -131,7 +131,7 @@ auto all_of() -> decltype(all_of_helper(std::make_index_sequence<N>{}))
 
 
 
-// implementation of the apply_to<N, F>, refer to that for more info
+/// implementation of the apply_to<N, F>, refer to that for more info
 template <typename Number, size_t ...I, typename Function, size_t ...N>
 auto apply_to_impl(std::index_sequence<I...>, Function function, std::index_sequence<N...>)
 {
@@ -145,7 +145,7 @@ auto apply_to_impl(std::index_sequence<I...>, Function function, std::index_sequ
 
 
 
-// helper of apply_to<N, F>, refer to that for more info
+/// helper of apply_to<N, F>, refer to that for more info
 template <typename Number, typename Function, size_t ...N>
 auto apply_to_helper(Function function, std::index_sequence<N...>)
 {
@@ -155,18 +155,42 @@ auto apply_to_helper(Function function, std::index_sequence<N...>)
 
 
 
-// a function that outputs a function that applies another function on its last F arguments
-// let ff be a function taking F arguments
-// then a call of apply_to<N>(ff) returns a function that takes (N + 1) * F arguments
-// whose result is the same as calling ff on the last F arguments, ignoring the first NF arguments
-// there is no reason why would apply_to<0> not work; it's just prevented as no use case is envisioned for it
-// being that this is written mainly to make index masking a touch easier
+/// a function that outputs a function that applies another function on its last F arguments
+/// let ff be a function taking F arguments
+/// then a call of apply_to<N>(ff) returns a function that takes (N + 1) * F arguments
+/// whose result is the same as calling ff on the last F arguments, ignoring the first NF arguments
+/// there is no reason why would apply_to<0> not work; it's just prevented as no use case is envisioned for it
+/// being that this is written mainly to make index masking a touch easier
 template <size_t N, typename Function>
 auto apply_to(Function function)
 {
   static_assert(N > 0, "ERROR: apply_to is not callable with N = 0, as in this case no masking is necessary!!");
   using Traits = function_traits<decltype(function)>;
   return apply_to_helper<typename Traits::result_type>(function, std::make_index_sequence<(N + 1) * Traits::arity>{});
+}
+
+
+
+/// variadic min and max
+/// credit https://stackoverflow.com/a/63330289/13007174
+template <typename Arg1, typename Arg2, typename... Args>
+constexpr auto min(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
+{
+    if constexpr (sizeof...(args) == 0)
+                   return arg1 < arg2 ? arg1 : arg2;
+    else
+      return min(min(arg1, arg2), args...);
+}
+
+
+
+template <typename Arg1, typename Arg2, typename... Args>
+constexpr auto max(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
+{
+    if constexpr (sizeof...(args) == 0)
+                   return arg1 > arg2 ? arg1 : arg2;
+    else
+      return max(max(arg1, arg2), args...);
 }
 
 #endif

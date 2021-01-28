@@ -9,7 +9,7 @@
 #include "TSystem.h"
 #include "TString.h"
 
-// poor man's version of file finder by extension
+/// poor man's version of file finder by extension
 std::vector<std::string> file_by_ext(const std::string &dir, const std::string &ext)
 {
   // which really relies on ROOT's ability to run shell commands aha
