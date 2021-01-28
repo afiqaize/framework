@@ -45,21 +45,21 @@ namespace Framework {
     Group(const std::string &name_, int counter_);
 
     /// number of currently held elements
-    int n_elements() const;
+    int n_elements() const noexcept;
 
     /// ref instead of copy of the above
-    const int& ref_to_n_elements() const;
+    const int& ref_to_n_elements() const noexcept;
 
     /// a mutable ref version
     /// can't be const if it's to be used to write TTree...
     /// might be worth considering to write TTree using copies rather than in-place references?
-    int& mref_to_n_elements();
+    int& mref_to_n_elements() noexcept;
 
     /// number of currently held attributes
-    int n_attributes() const;
+    int n_attributes() const noexcept;
 
     /// as it says on the tin
-    bool has_attribute(const std::string &name) const;
+    bool has_attribute(const std::string &name) const noexcept;
 
     /// reserve the space for expected number of attributes
     void reserve(int attr);
@@ -79,22 +79,43 @@ namespace Framework {
     /// reference to single attribute array - variant version
     const std::variant<std::vector<Ts>...>& operator()(const std::string &name) const;
 
-    /// overload the above for when the attribute index is known
+    /// overload the above for when the attribute index is known e,g. from inquire()
+    /// deliberately written without checks for invalid index, so use with care
     const std::variant<std::vector<Ts>...>& operator()(int iattr) const;
 
-    /// mutable version of the above
-    /// only one version provided, intended for use by Tree only
+    /// mutable version of operator()
+    /// intended for use by Tree only
     std::variant<std::vector<Ts>...>& mref_to_attribute(const std::string &name);
+
+    /// known attribute index overload
+    std::variant<std::vector<Ts>...>& mref_to_attribute(int iattr);
 
     /// reference to single attribute array - typed version
     template <typename T>
     const std::vector<T>& get(const std::string &name) const;
+
+    /// known attribute index overload
+    template <typename T>
+    const std::vector<T>& get(int iattr) const;
+
+    /// like the above, but returns a nullptr if attribute doesn't exist, or type is wrong, etc
+    template <typename T>
+    const std::vector<T>* get_if(const std::string &name) const noexcept;
+
+    /// known attribute index overload
+    /// similar to other known index overloads
+    template <typename T>
+    const std::vector<T>* get_if(int iattr) const noexcept;
 
     /// reference to single element in an attribute - typed version
     /// equivalent to get<T>(attr)[v_index[index]]
     /// i.e. gives the nth element as per the current Group state accounting for previous update_indices calls 
     template <typename T>
     const T& get(const std::string &name, int index) const;
+
+    /// known attribute index overload
+    template <typename T>
+    const T& get(int iattr, int index) const;
 
     /// the associated indices to be used with the above
     idxs indices() const;
@@ -179,7 +200,7 @@ namespace Framework {
     idxs sort_absolute_descending(const std::string &name, const idxs &v_idx = idxs()) const;
 
     /// returns the index where an attribute occurs
-    int inquire(const std::string &name) const;
+    int inquire(const std::string &name) const noexcept;
 
     /// populate the Group data
     virtual void populate(long long entry) = 0;

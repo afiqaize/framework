@@ -18,7 +18,7 @@ v_index(this)
 
 
 template <typename ...Ts>
-int Framework::Group<Ts...>::n_elements() const
+int Framework::Group<Ts...>::n_elements() const noexcept
 {
   return selected;
 }
@@ -26,7 +26,7 @@ int Framework::Group<Ts...>::n_elements() const
 
 
 template <typename ...Ts>
-const int& Framework::Group<Ts...>::ref_to_n_elements() const
+const int& Framework::Group<Ts...>::ref_to_n_elements() const noexcept
 {
   return selected;
 }
@@ -34,7 +34,7 @@ const int& Framework::Group<Ts...>::ref_to_n_elements() const
 
 
 template <typename ...Ts>
-int& Framework::Group<Ts...>::mref_to_n_elements()
+int& Framework::Group<Ts...>::mref_to_n_elements() noexcept
 {
   return selected;
 }
@@ -42,7 +42,7 @@ int& Framework::Group<Ts...>::mref_to_n_elements()
 
 
 template <typename ...Ts>
-int Framework::Group<Ts...>::n_attributes() const
+int Framework::Group<Ts...>::n_attributes() const noexcept
 {
   return v_attr.size();
 }
@@ -50,7 +50,7 @@ int Framework::Group<Ts...>::n_attributes() const
 
 
 template <typename ...Ts>
-bool Framework::Group<Ts...>::has_attribute(const std::string &name) const
+bool Framework::Group<Ts...>::has_attribute(const std::string &name) const noexcept
 {
   return inquire(name) != -1;
 }
@@ -163,11 +163,54 @@ std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::mref_to_attribute(con
 
 
 template <typename ...Ts>
+std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::mref_to_attribute(int iattr)
+{
+  return const_cast<std::variant<std::vector<Ts>...>&>( (*const_cast<const Framework::Group<Ts...>*>(this))(iattr) );
+}
+
+
+
+template <typename ...Ts>
 template <typename T>
 const std::vector<T>& Framework::Group<Ts...>::get(const std::string &name) const
 {
   static_assert(contained_in<T, Ts...>, "ERROR: Group::get: called with a type not among the types of by the Group!!");
   return std::get<std::vector<T>>((*this)(name));
+}
+
+
+
+template <typename ...Ts>
+template <typename T>
+const std::vector<T>& Framework::Group<Ts...>::get(int iattr) const
+{
+  static_assert(contained_in<T, Ts...>, "ERROR: Group::get: called with a type not among the types of by the Group!!");
+  return std::get<std::vector<T>>((*this)(iattr));
+}
+
+
+
+template <typename ...Ts>
+template <typename T>
+const std::vector<T>* Framework::Group<Ts...>::get_if(const std::string &name) const noexcept
+{
+  auto iA = inquire(name);
+  if (iA == -1)
+    return nullptr;
+
+  return std::get_if<std::vector<T>>(&v_data[iA]);
+}
+
+
+
+template <typename ...Ts>
+template <typename T>
+const std::vector<T>* Framework::Group<Ts...>::get_if(int iattr) const noexcept
+{
+  if (iattr >= 0 and iattr < n_attributes())
+    return std::get_if<std::vector<T>>(&v_data[iattr]);
+
+  return nullptr;
 }
 
 
@@ -180,6 +223,18 @@ const T& Framework::Group<Ts...>::get(const std::string &name, int index) const
     throw std::invalid_argument( "ERROR: Group::get: an invalid element index is requested!!" );
 
   return this->get<T>(name)[v_index[index]];
+}
+
+
+
+template <typename ...Ts>
+template <typename T>
+const T& Framework::Group<Ts...>::get(int iattr, int index) const
+{
+  if (index >= selected)
+    throw std::invalid_argument( "ERROR: Group::get: an invalid element index is requested!!" );
+
+  return this->get<T>(iattr)[v_index[index]];
 }
 
 
@@ -430,7 +485,7 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::sort_absolute_de
 
 
 template <typename ...Ts>
-int Framework::Group<Ts...>::inquire(const std::string &name) const
+int Framework::Group<Ts...>::inquire(const std::string &name) const noexcept
 {
   for (int iA = 0; iA < v_attr.size(); ++iA) {
     auto &[alias, _] = v_attr[iA];

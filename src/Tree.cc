@@ -123,10 +123,11 @@ bool Framework::Tree::make_array_branches(Group &group, Attributes &&...attrs)
   }
 
   int cap = group.ref_to_indices().capacity();
-  std::get<1>(v_branch.back()) = std::function<void()>([&group, cap, v_attr, &branches = std::get<2>(v_branch.back())] () mutable {
+  std::array<int, sizeof...(attrs)> v_iattr{ group.inquire(attrs)... };
+  std::get<1>(v_branch.back()) = std::function<void()>([&group, cap, v_iattr, &branches = std::get<2>(v_branch.back())] () mutable {
       if (group.ref_to_indices().capacity() > cap) {
-        for (int iB = 0; iB < v_attr.size(); ++iB)
-          std::visit([&branch = branches[iB + 1]] (auto &vec) { branch->SetAddress(vec.data()); }, group.mref_to_attribute(v_attr[iB]));
+        for (int iB = 0; iB < v_iattr.size(); ++iB)
+          std::visit([&branch = branches[iB + 1]] (auto &vec) { branch->SetAddress(vec.data()); }, group.mref_to_attribute(v_iattr[iB]));
 
         cap = group.ref_to_indices().capacity();
       }
