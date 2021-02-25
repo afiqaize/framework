@@ -39,7 +39,7 @@ namespace Framework {
     /// if false, and v_file is already filled, the method does nothing
     /// if true, tree is reset and then readded with the new set of files
     /// nfile is how many files one reads from the given vector, defaults to all
-    void set_files(const std::vector<std::string> &v_file_, int nfile = -1, const bool force_replace = false);
+    void set_files(const std::vector<std::string> &v_file_, int nfile = -1, bool force_replace = false);
 
     /// add a new file to v_file
     /// true if successful i.e. no duplicate files
@@ -54,7 +54,7 @@ namespace Framework {
     /// true if successful i.e. no weight already has that name
     /// false otherwise, so weight is ignored
     /// TODO include methods that sets weight based on tree content
-    bool add_weight(const std::string &wgt_name, const double wgt);
+    bool add_weight(const std::string &wgt_name, double wgt);
 
     /// split a dataset into two parts
     /// also renames itself to indicate uniqueness
@@ -81,11 +81,11 @@ namespace Framework {
     /// signature: one argument corresponding to entry number and no return value
     /// the function should contain the relevant analysis steps for one event
     template <typename Analyzer>
-    void set_analyzer(Analyzer analyzer_);
+    void set_analyzer(Analyzer analyzer_, bool force_replace = false);
 
     /// perform the analysis
     /// can also cap the total events ran, or skip some
-    void analyze(long long total = -1LL, long long skip = -1LL) const;
+    void analyze(long long total = -1LL, long long skip = -1LL, bool silent = false) const;
 
     /// reset Tree state, but keep the info strings
     void reset();

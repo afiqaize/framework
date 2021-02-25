@@ -251,7 +251,7 @@ void Framework::Dataset<Tree>::associate(Collections &...colls)
 
 template <typename Tree>
 template <typename Analyzer>
-void Framework::Dataset<Tree>::set_analyzer(Analyzer analyzer_)
+void Framework::Dataset<Tree>::set_analyzer(Analyzer analyzer_, bool force_replace /*= false*/)
 {
   using Traits = function_traits<decltype(analyzer_)>;
   static_assert(Traits::arity == 1 and std::is_convertible_v<typename Traits::template bare_arg<0>, long long>, 
@@ -259,14 +259,14 @@ void Framework::Dataset<Tree>::set_analyzer(Analyzer analyzer_)
   static_assert(std::is_same_v<typename Traits::result_type, void>, 
                 "ERROR: Dataset::set_analyzer: currently non-void return type is not supported!!");
 
-  if (!analyzer)
+  if (force_replace or !analyzer)
     analyzer = std::function<void(long long)>(analyzer_);
 }
 
 
 
 template <typename Tree>
-void Framework::Dataset<Tree>::analyze(long long total /*= -1LL*/, long long skip /*= -1LL*/) const
+void Framework::Dataset<Tree>::analyze(long long total /*= -1LL*/, long long skip /*= -1LL*/, bool silent /*=false*/) const
 {
   if (tree_ptr == nullptr)
     throw std::runtime_error( "ERROR: Dataset::analyze should not be called before assigning the files to be analyzed!!" );
@@ -278,15 +278,17 @@ void Framework::Dataset<Tree>::analyze(long long total /*= -1LL*/, long long ski
     throw std::runtime_error( "ERROR: Dataset::analyze should not be called before calling Dataset::set_analyzer!!" );
 
   const auto dEvt = (total > 0LL and total <= tree_ptr->GetEntries()) ? total : tree_ptr->GetEntries();
-  std::cout << "Processing " << dEvt << " events..." << std::endl;
+  if (!silent)
+    std::cout << "Processing " << dEvt << " events..." << std::endl;
 
   const bool doskip = skip > 0LL and skip < total;
-  if (doskip)
+  if (!silent and doskip)
     std::cout << "Skipping " << skip << " events..." << std::endl;
 
   for (auto cEvt = (doskip) ? skip : 0LL; cEvt < dEvt; ++cEvt)
     analyzer(current_entry(cEvt));
-  std::cout << "Processed " << dEvt << " events!" << std::endl;
+  if (!silent)
+    std::cout << "Processed " << dEvt << " events!" << std::endl;
 }
 
 
@@ -296,6 +298,9 @@ void Framework::Dataset<Tree>::reset()
 {
   tree_ptr->ResetBranchAddresses();
   tree_ptr->Reset();
+  tree_ptr.reset();
+  allocator = Allocator{};
+  analyzer = nullptr;
 
   v_file.clear();
   v_file.shrink_to_fit();
