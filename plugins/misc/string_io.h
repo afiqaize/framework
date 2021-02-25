@@ -111,7 +111,7 @@ std::string& strip(std::string &str, const std::string &sub = " ")
 
 
 /// joins/concatenate strings with the indicated separator
-std::string join(std::vector<std::string> &strs, const std::string &sep = " ")
+std::string join(const std::vector<std::string> &strs, const std::string &sep = " ")
 {
   auto str = (strs.empty()) ? "" : strs[0];
   for (int istr = 1; istr < strs.size(); ++istr)

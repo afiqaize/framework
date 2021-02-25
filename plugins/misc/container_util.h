@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <type_traits>
+#include <cmath>
 
 template <typename K, typename V, typename C, typename std::enable_if_t<std::is_convertible_v<C, K>>* = nullptr>
 int index_with_key(const std::vector<std::pair<K, V>> &vec, const C &key)
