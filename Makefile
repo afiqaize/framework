@@ -5,6 +5,7 @@
 FWK_BASE_DIR = ..
 COMPILER = g++
 SAVE_TEMPS = false
+DEBUG = false
 
 CXXFLAGS = $(shell root-config --cflags --evelibs) -std=c++17 -O3 -Wall -Wextra -Wpedantic -Werror -Wno-float-equal -Wno-sign-compare -Wfatal-errors
 FWK_INCLUDES = -I $(FWK_BASE_DIR)/plugins/ -I $(FWK_BASE_DIR)/src/
@@ -13,5 +14,6 @@ FWK_INCLUDES = -I $(FWK_BASE_DIR)/plugins/ -I $(FWK_BASE_DIR)/src/
 %: %.cc
 	$(eval CXXFLAGS += $(if $(filter $(COMPILER), clang++), -stdlib=libstdc++ -frelaxed-template-template-args, ))
 	$(eval CXXFLAGS += $(if $(filter $(SAVE_TEMPS), true), -save-temps, ))
+	$(eval CXXFLAGS += $(if $(filter $(DEBUG), true), -ggdb3, ))
 	$(info $(COMPILER) $(CXXFLAGS) $(FWK_INCLUDES) $< -o $@)
 	@ $(COMPILER) $(CXXFLAGS) $(FWK_INCLUDES) $< -o $@
