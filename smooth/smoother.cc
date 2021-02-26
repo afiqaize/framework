@@ -18,14 +18,14 @@ int main(int argc, char** argv) {
   TCLAP::ValueArg<std::string> cmdsyst("", "systematic", std::string("systematic uncertainty name. ")
                                        + "assumes that the files containing systematically varied events are of the form "
                                        + "filename_systematic_direction.root, where: " 
-                                       + "filename.root is as given to --file "
-                                       + "systematic is as given to --systematic "
-                                       + "direction is up or down", false, "", "string", cmdbase);
+                                       + "filename.root is as given to --file, "
+                                       + "systematic is as given to --systematic, "
+                                       + "and direction is up and down (both files expected to be present).", false, "", "string", cmdbase);
   TCLAP::ValueArg<std::string> cmdmode("", "mode", std::string("mode runtime mode. currently available: ")
                                        + "histogram: make (unrolled, if >1D) histograms of the provided files. --systematic is ignored in this case "
                                        + "smooth: perform systematic smoothing",
                                        true, "", "string", cmdbase);
-  TCLAP::MultiArg<std::string> cmdvar("", "variable", std::string("variable(s) to use.")
+  TCLAP::MultiArg<std::string> cmdvar("", "variable", std::string("variable(s) to use. ")
                                       + "variable names must correspond to branch names in the tree. "
                                       + "example syntax: 'cHel : nbin;min;max' or 'mtt : edge1;edge2;...;edgeN' " 
                                       + "for fixed/variable binning respectively. "
@@ -33,9 +33,9 @@ int main(int argc, char** argv) {
                                       + "expressions like 'c = <expression> : binning', can also be used. "
                                       + "accepted expressions are unary operations 'op(a)' where supported unary operations are: "
                                       + "exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate and invert "
-                                      + "or binary operations a op b, where supported binary operations are: +, -, *, / "
-                                      + "variables and expressions are interpreted as continuous."
-                                      + "under- and overflows are automatically added to the first and last bins respectively."
+                                      + "or binary operations a op b, where supported binary operations are: +, -, * and /. "
+                                      + "variables and expressions are interpreted as continuous. "
+                                      + "under- and overflows are automatically added to the first and last bins respectively. "
                                       + "use the option multiple times to make a multidimensional histogram.", true, "string", cmdbase);
   TCLAP::ValueArg<std::string> cmdweight("", "weight", "branch name to be used as weight. also accepts expressions (see --variable)",
                                          false, "", "string", cmdbase);
