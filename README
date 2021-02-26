@@ -1,32 +1,15 @@
-analysis framework builder for use in typical HEP analyses
+this is a reimplementation of [1]. as such, please refer to the README therein for the motivation of the implementation.
+this code is motivated by the need to apply the algorithm on a 3- or 4-dimensional template, which is not supported by [1].
+the implementation provided here is the general N-dimensional case, although this is ultimately limited by the available simulation statistics.
+
+[1] https://github.com/andrey-popov/syst-smoothing
 
 requirements
-- C++17 compiler: development and testing are done with gcc 8.3.1
-- ROOT: no explicit requirement, but development and testing are done with ROOT 6.18.04
-- for CMS members, the environment provided by CMSSW_11_0_X and newer fulfills the requirements
-- the framework itself is independent of CMSSW however
-- headers in plugins may introduce additional dependencies
+- C++17 compiler (development and testing with 10.1.0)
+- ROOT (6.22/00)
+- GSL (2.6)
 
 quickstart
-- check the exec/example_gen_ttbar.cc annotated example file
-
-notes
-- only flat ROOT trees are supported, where flat means the branches are either simple types e.g. ints, floats, bools or arrays of those
-- the core part of the framework is only a set of headers to be compiled together with user's execution macro
-- the execution macro is a set of instructions provided by the user according to their analysis needs, which also doubles as the configuration
-
-directories
-- src: the core part of the framework
-- exec: contains an annotated execution macro to illustrate the use of the framework, plus others the author is working on
-- plugins: additional header files that are not considered as part of framework core, but can be convenient for more complex analyses
-
-planned improvements
-- plugin for prescaled triggers
-- plotting and other histogram manipulation plugin
-- datacard plugin for use with Higgs combine tool
-- support for other output formats e.g. json, csv
-- interface for keeping track of group summary statistics
-- concurrency support
+- compile the smooth/smoother.cc using the Makefile within (i.e. make smoother) and execute it with option --help for the available options
 
 feedback and/or bug report are welcome
-
