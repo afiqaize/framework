@@ -7,11 +7,10 @@
 
 #include <thread>
 
-#include "misc/container_util.h"
+#include "TKey.h"
 
 #include "make_histogram.h"
 #include "fit_util.h"
-#include "output_util.h"
 
 auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std::vector<double> &fixed_bandwidth = {})
 {
@@ -40,7 +39,7 @@ auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std:
       bandwidth[iv] = std::ceil(grid[index_1n(ibw, iv, dummy)] * (edges[iv].size() - 1));
 
     if (std::all_of(std::begin(bandwidth), std::end(bandwidth), [] (auto &bw) { return bw > 1; }))
-      bandwidths.emplace_back(bandwidth);
+      bandwidths.emplace_back(std::move(bandwidth));
   }
   bandwidths.shrink_to_fit();
 
@@ -322,7 +321,7 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
       if (withinbw_h)
         plane_h.emplace_back(ib);
 
-      if (!samebw and withinbw_l)
+      if (withinbw_l)
         plane_l.emplace_back(ib);
     }
 
@@ -400,6 +399,53 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
 
 
 
+/// load up a snapshot to continue cv
+void load_snapshot(const std::tuple<
+                   std::vector<std::vector<std::string>>,
+                   std::vector<std::vector<double>>,
+                   std::vector<std::vector<double>>,
+                   std::string> &variables_bins,
+                   const std::string &snapshot, const std::string &systematic, int npartition,
+                   std::vector<double> &chi2s_h, std::vector<double> &chi2s_l, int &istart)
+{
+  auto ss = std::unique_ptr<TFile>(TFile::Open( snapshot.c_str() ));
+  const std::string bw = "bandwidth_";
+
+  const int nvar = std::get<1>(variables_bins).size();
+  for (int iv = 0; iv < nvar; ++iv) {
+    if (ss->FindKey((bw + std::get<0>(variables_bins)[iv][0]).c_str()) == nullptr) {
+      std::cout << "Expected variable " << std::get<0>(variables_bins)[iv][0] << " not found in snapshot file." << std::endl;
+      return;
+    }
+  }
+
+  auto kh = ss->FindKey((bw + systematic + "_up_chi2").c_str()), kl = ss->FindKey((bw + systematic + "_down_chi2").c_str());
+  auto kp = ss->FindKey((std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str());
+  if (kh == nullptr or kl == nullptr or kp == nullptr) {
+    std::cout << "Snapshot file not compatible with the current smoothing routine. Either the required histograms aren't present "
+      "or the number of partitions used isn't the same between the runs." << std::endl;
+    return;
+  }
+
+  auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( kh->GetName() ));
+  auto cl = std::unique_ptr<TH1D>(ss->Get<TH1D>( kl->GetName() ));
+  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( kp->GetName() ));
+
+  if (ch->GetNbinsX() != chi2s_h.size() or cl->GetNbinsX() != chi2s_l.size()) {
+    std::cout << "Number of chi2 is not compatible with the current number of tested bandwidth hypotheses." << std::endl;
+    return;
+  }
+
+  for (int ic = 0; ic < chi2s_h.size(); ++ic) {
+    chi2s_h[ic] = ch->GetBinContent(ic + 1); 
+    chi2s_l[ic] = cl->GetBinContent(ic + 1); 
+  }
+
+  istart = np->GetBinContent(1);
+}
+
+
+
 /// perform the actual smoothing
 /// also cross-validation over pre-determined set of bandwidths if there are more than 1 partitions
 /// bandwidths is when one wants to run with a fixed bandwidth choice
@@ -407,20 +453,33 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
 auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
                            Framework::Dataset<TChain> &data_h,
                            Framework::Dataset<TChain> &data_l,
-                           Framework::Collection<float, double> &coll,
+                           Framework::Collection<float, double> &coll_n,
+                           Framework::Collection<float, double> &coll_h,
+                           Framework::Collection<float, double> &coll_l,
                            const std::tuple<
                            std::vector<std::vector<std::string>>,
                            std::vector<std::vector<double>>,
                            std::vector<std::vector<double>>,
-                           std::string> &variables_bins,
+                           std::string> &variables_n,
+                           const std::tuple<
+                           std::vector<std::vector<std::string>>,
+                           std::vector<std::vector<double>>,
+                           std::vector<std::vector<double>>,
+                           std::string> &variables_h,
+                           const std::tuple<
+                           std::vector<std::vector<std::string>>,
+                           std::vector<std::vector<double>>,
+                           std::vector<std::vector<double>>,
+                           std::string> &variables_l,
                            const std::string &systematic,
                            bool symmetrize,
                            bool binomial,
                            int npartition,
                            int nrepeatcv,
+                           const std::string &snapshot,
                            const std::vector<double> &fixed_bandwidth = {})
 {
-  const int npart = npartition * nrepeatcv;
+  int npart = npartition * nrepeatcv;
   const bool runcv = npartition > 1 and npart > 1;
   std::vector<std::unique_ptr<TH1>> result;
   if (!fixed_bandwidth.empty() and runcv) {
@@ -428,8 +487,8 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
     return result;
   }
 
-  const auto &coarse_edges = std::get<1>(variables_bins);
-  const auto &fine_edges = std::get<2>(variables_bins);
+  const auto &coarse_edges = std::get<1>(variables_n);
+  const auto &fine_edges = std::get<2>(variables_n);
   const int nvar = coarse_edges.size(), nfbin = count_nbin(fine_edges);
 
   if (!fixed_bandwidth.empty() and fixed_bandwidth.size() != nvar) {
@@ -453,15 +512,15 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
   };
 
   std::cout << "Mode smooth: making nominal histogram..." << std::endl;
-  const auto vcn = count_and_bin(data_n, coll, variables_bins, 1, 1, true, true);
-  const auto vfn = count_and_bin(data_n, coll, variables_bins, 1, 2, true, false);
+  const auto vcn = count_and_bin(data_n, coll_n, variables_n, 1, 1, true, false);
+  const auto vfn = count_and_bin(data_n, coll_n, variables_n, 1, 2, true, true);
 
   std::cout << "Mode smooth: making systematic " << systematic << " histograms..." << std::endl;
-  const auto vch = count_and_bin(data_h, coll, variables_bins, 1, 1, true, true);
-  const auto vfh = count_and_bin(data_h, coll, variables_bins, 1, 2, true, false);
+  const auto vch = count_and_bin(data_h, coll_h, variables_h, 1, 1, true, false);
+  const auto vfh = count_and_bin(data_h, coll_h, variables_h, 1, 2, true, true);
 
-  const auto vcl = count_and_bin(data_l, coll, variables_bins, 1, 1, true, true);
-  const auto vfl = count_and_bin(data_l, coll, variables_bins, 1, 2, true, false);
+  const auto vcl = count_and_bin(data_l, coll_l, variables_l, 1, 1, true, false);
+  const auto vfl = count_and_bin(data_l, coll_l, variables_l, 1, 2, true, true);
 
   const auto &coarse_n = vcn[0], &coarse_h = vch[0], &coarse_l = vcl[0];
   const auto &fine_n = vfn[0], &fine_h = vfh[0], &fine_l = vfl[0];
@@ -490,18 +549,21 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
       return npart > 1 ? npart : 1;
     }(npart);
 
+    int istart = 0;
+    if (snapshot != "")
+      load_snapshot(variables_n, snapshot, systematic, npartition, chi2s_h, chi2s_l, istart);
+    npart += istart;
+
     if (binomial) {
       rng = std::make_unique<std::mt19937_64>(random_generator<>());
 
-      unweighted_n = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_n, coll, variables_bins, 1, 2, false, false));
-      unweighted_h = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_h, coll, variables_bins, 1, 2, false, false));
-      unweighted_l = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_l, coll, variables_bins, 1, 2, false, false));
+      unweighted_n = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_n, coll_n, variables_n, 1, 2, false, true));
+      unweighted_h = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_h, coll_h, variables_h, 1, 2, false, true));
+      unweighted_l = std::make_unique<std::vector<Arrayhist>>(count_and_bin(data_l, coll_l, variables_l, 1, 2, false, true));
 
       average_n = std::make_unique<Arrayhist>(divide(fine_n, (*unweighted_n)[0]));
       average_h = std::make_unique<Arrayhist>(divide(fine_h, (*unweighted_h)[0]));
       average_l = std::make_unique<Arrayhist>(divide(fine_l, (*unweighted_l)[0]));
-
-      dist = std::make_unique<std::binomial_distribution<int>>();
 
       params_n = std::make_unique<std::binomial_distribution<int>::param_type[]>(nfbin);
       params_h = std::make_unique<std::binomial_distribution<int>::param_type[]>(nfbin);
@@ -523,13 +585,40 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
       trev_l.emplace_back(Arrayhist(nfbin));
     }
 
-    for (int ipart = 0; ipart < npart; ++ipart) {
+    auto f_fill_binom = [nfbin] (const std::unique_ptr<std::binomial_distribution<int>::param_type[]> &params,
+                                 const std::unique_ptr<Arrayhist> &average, Arrayhist &hist) {
+      thread_local auto rng = random_generator<>();
+      auto dist = std::binomial_distribution<int>{};
+
+      for (int ibin = 0; ibin < nfbin; ++ibin) {
+        dist.param(params[ibin]);
+        const auto binom = (dist)(rng);
+        hist(ibin, 0) = (*average)(ibin, 0) * binom;
+        hist(ibin, 1) = (*average)(ibin, 1) * binom * binom;
+      }
+    };
+
+    auto f_fill_coll = [npartition] (Framework::Dataset<TChain> &data, Framework::Collection<float, double> &coll,
+                                     const std::tuple<
+                                     std::vector<std::vector<std::string>>,
+                                     std::vector<std::vector<double>>,
+                                     std::vector<std::vector<double>>,
+                                     std::string> &variables,
+                                     std::vector<Arrayhist> &hists) {
+      hists = count_and_bin(data, coll, variables, npartition, 2, true, true);
+    };
+
+    for (int ipart = istart; ipart < npart; ++ipart) {
       if (ipart % report_every == 0)
         std::cout << "Starting cross validation run on partition " << ipart + 1 << "/" << npart <<
           " with " << bandwidths.size() << " bandwidth choices..." << std::endl;
       const int iusepart = ipart % npartition;
 
       if (binomial) {
+        threads[0] = std::thread(f_fill_binom, std::cref(params_n), std::cref(average_n), std::ref(trev_n[iusepart]));
+        threads[1] = std::thread(f_fill_binom, std::cref(params_h), std::cref(average_h), std::ref(trev_h[iusepart]));
+        threads[2] = std::thread(f_fill_binom, std::cref(params_l), std::cref(average_l), std::ref(trev_l[iusepart]));
+        /*
         for (int ibin = 0; ibin < nfbin; ++ibin) {
           dist->param(params_n[ibin]);
           const auto ibn = (*dist)(*rng);
@@ -546,11 +635,22 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
           trev_l[iusepart](ibin, 0) = (*average_l)(ibin, 0) * ibl;
           trev_l[iusepart](ibin, 1) = (*average_l)(ibin, 1) * ibl * ibl;
         }
+        */
       }
       else if (iusepart == 0) {
-        trev_n = count_and_bin(data_n, coll, variables_bins, npartition, 2, true, false);
-        trev_h = count_and_bin(data_h, coll, variables_bins, npartition, 2, true, false);
-        trev_l = count_and_bin(data_l, coll, variables_bins, npartition, 2, true, false);
+        threads[0] = std::thread(f_fill_coll, std::ref(data_n), std::ref(coll_n), std::cref(variables_n), std::ref(trev_n));
+        threads[1] = std::thread(f_fill_coll, std::ref(data_h), std::ref(coll_h), std::cref(variables_h), std::ref(trev_h));
+        threads[2] = std::thread(f_fill_coll, std::ref(data_l), std::ref(coll_l), std::cref(variables_l), std::ref(trev_l));
+        /*
+        trev_n = count_and_bin(data_n, coll_n, variables_n, npartition, 2, true, true);
+        trev_h = count_and_bin(data_h, coll_h, variables_h, npartition, 2, true, true);
+        trev_l = count_and_bin(data_l, coll_l, variables_l, npartition, 2, true, true);
+        */
+      }
+
+      if (binomial or iusepart == 0) {
+        for (int ith = 0; ith < 3; ++ith)
+          threads[ith].join();
       }
 
       const auto &eval_n = trev_n[iusepart], &eval_h = trev_h[iusepart], &eval_l = trev_l[iusepart];
@@ -611,53 +711,99 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
     to.insert(std::end(to), std::make_move_iterator(std::begin(from)), std::make_move_iterator(std::end(from)));
   };
 
-  f_concatenate(result, array_to_root(variables_bins, "nominal_source_template", coarse_edges, coarse_n));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_source_template", coarse_edges, coarse_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_source_template", coarse_edges, coarse_l));
+  f_concatenate(result, array_to_root(variables_n, "nominal_source_template", coarse_edges, coarse_n));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_source_template", coarse_edges, coarse_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_template", coarse_edges, coarse_l));
 
   const auto coarse_smooth_h = rebin(apply_deviation(fine_n, smooth_rdev_h), fine_edges, coarse_edges);
   const auto coarse_smooth_l = rebin(apply_deviation(fine_n, smooth_rdev_l), fine_edges, coarse_edges);
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_smooth_template", coarse_edges, coarse_smooth_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_smooth_template", coarse_edges, coarse_smooth_l));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_smooth_template", coarse_edges, coarse_smooth_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_template", coarse_edges, coarse_smooth_l));
 
   if (symmetrize)
     std::tie(rdev_h, rdev_l) = f_make_rdev(fine_n, fine_h, fine_l, false);
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_fine_source_deviation", fine_edges, rdev_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_fine_source_deviation", fine_edges, rdev_l));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_fine_source_deviation", fine_edges, rdev_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_deviation", fine_edges, rdev_l));
 
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_fine_smooth_deviation", fine_edges, smooth_rdev_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_fine_smooth_deviation", fine_edges, smooth_rdev_l));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_fine_smooth_deviation", fine_edges, smooth_rdev_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_deviation", fine_edges, smooth_rdev_l));
 
   const auto [crdev_h, crdev_l] = f_make_rdev(coarse_n, coarse_h, coarse_l, false);
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_source_deviation", coarse_edges, crdev_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_source_deviation", coarse_edges, crdev_l));
+  f_concatenate(result, array_to_root(variables_n, "nominal_source_deviation", coarse_edges, relative_deviation(coarse_n, coarse_n)));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_source_deviation", coarse_edges, crdev_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_deviation", coarse_edges, crdev_l));
 
   const auto smooth_crdev_h = divide(sum(coarse_smooth_h, coarse_n, 1., -1., false, true), coarse_n, false, true);
   const auto smooth_crdev_l = divide(sum(coarse_smooth_l, coarse_n, 1., -1., false, true), coarse_n, false, true);
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_up_smooth_deviation", coarse_edges, smooth_crdev_h));
-  f_concatenate(result, array_to_root(variables_bins, systematic + "_down_smooth_deviation", coarse_edges, smooth_crdev_l));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_smooth_deviation", coarse_edges, smooth_crdev_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_deviation", coarse_edges, smooth_crdev_l));
+
+  if (runcv) {
+    const auto bwvars = std::make_tuple(std::vector<std::vector<std::string>>{{"bandwidth"}},
+                                        std::vector<std::vector<double>>{ make_interval(0., double(bandwidths.size()), 1.) },
+                                        std::vector<std::vector<double>>{}, std::string{});
+    const auto &bwedges = std::get<1>(bwvars);
+
+    for (int iv = 0; iv < nvar; ++iv)
+      f_concatenate(result, array_to_root(bwvars, std::get<0>(variables_n)[iv][0], bwedges, bandwidth_to_hist(bandwidths, fine_edges, iv)));
+
+    f_concatenate(result, array_to_root(bwvars, systematic + "_up_chi2", bwedges, vector_to_hist(chi2s_h)));
+    f_concatenate(result, array_to_root(bwvars, systematic + "_down_chi2", bwedges, vector_to_hist(chi2s_l)));
+
+    const auto nprv = std::make_tuple(std::vector<std::vector<std::string>>{{"npartition" + to_str(npartition) + "_times_nrepeatcv"}},
+                                      std::vector<std::vector<double>>{ {0., 1.} },
+                                      std::vector<std::vector<double>>{}, std::string{});
+    f_concatenate(result, array_to_root(nprv, "", std::get<1>(nprv), vector_to_hist({double(npart)})));
+  }
 
   return result;
 }
 
 
 
-auto smooth_templates(const std::vector<std::string> &files,
+void smooth_templates(const std::vector<std::string> &files,
                       const std::string &tree,
-                      const std::tuple<
-                      std::vector<std::vector<std::string>>,
-                      std::vector<std::vector<double>>,
-                      std::vector<std::vector<double>>,
-                      std::string> &variables_bins,
+                      const std::vector<std::string> &variables,
+                      const std::vector<std::string> &weight,
                       const std::string &systematic,
+                      const std::string &type,
                       bool symmetrize,
                       bool binomial,
                       int npartition,
                       int nrepeatcv,
-                      const std::vector<double> &fixed_bandwidth = {})
+                      const std::string &snapshot,
+                      const std::vector<double> &fixed_bandwidth,
+                      const std::string &output)
 {
+  if (type == "weight" and weight.size() != 3)
+    throw std::runtime_error( "Number of weight expressions has to be 3 if --type is weight. Aborting." );
+
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
+  auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0]);
+  auto coll_n = make_collection(data_n, variables_n);
+
+  auto fvary_h = files;
+  if (type == "tree") {
+    for (auto &file : fvary_h)
+      replace(file, ".root", std::string("_") + systematic + "_up.root");
+  }
+  Framework::Dataset<TChain> data_h("data_h", tree);
+  data_h.set_files(fvary_h);
+  auto variables_h = (type == "tree") ? variables_n : variables_and_binning(variables, weight[1]);
+  auto coll_h = make_collection(data_h, variables_h);
+
+  auto fvary_l = fvary_h;
+  if (type == "tree") {
+    for (auto &file : fvary_l)
+      replace(file, "_up.root", "_down.root");
+  }
+  Framework::Dataset<TChain> data_l("data_l", tree);
+  data_l.set_files(fvary_l);
+  auto variables_l = (type == "tree") ? variables_n : variables_and_binning(variables, weight[2]);
+  auto coll_l = make_collection(data_l, variables_l);
+
+  // FIXME implement equiprobable binning and bin map editing here?
 
   if (!fixed_bandwidth.empty()) {
     std::cout << "Fixed bandwidth mode detected. Ignoring --npartition and --nrepeatcv options..." << std::endl;
@@ -665,28 +811,14 @@ auto smooth_templates(const std::vector<std::string> &files,
     nrepeatcv = 1;
   }
 
-  auto fvary_h = files;
-  for (auto &file : fvary_h)
-    replace(file, ".root", std::string("_") + systematic + "_up.root");
-  Framework::Dataset<TChain> data_h("data_h", tree);
-  data_h.set_files(fvary_h);
-
-  auto fvary_l = fvary_h;
-  for (auto &file : fvary_l)
-    replace(file, "_up.root", "_down.root");
-  Framework::Dataset<TChain> data_l("data_l", tree);
-  data_l.set_files(fvary_l);
-
-  auto coll = make_collection(data_n, variables_bins);
-
-  // FIXME implement equiprobable binning and bin map editing here?
-
-  return smooth_templates_impl(data_n, data_h, data_l, coll, variables_bins, systematic, symmetrize, binomial, npartition, nrepeatcv, fixed_bandwidth);
+  auto result = smooth_templates_impl(data_n, data_h, data_l, coll_n, coll_h, coll_l, variables_n, variables_h, variables_l, systematic,
+                                      symmetrize, binomial, npartition, nrepeatcv, snapshot, fixed_bandwidth);
+  save_all_as(output, result);
 }
 
 // FIXME to do:
 // better diagnostics reporting
-// more complete multithreading support (currently only smoothing, histogramming is single-thread. requires thread-safe rng)
+// more complete multithreading support
 // smoothing in equiprobable binning in addition to equidistant
 
 #endif

@@ -224,4 +224,31 @@ auto divide(const Arrayhist &h1, const Arrayhist &h2, bool exact1 = false, bool 
   return result;
 }
 
+
+
+/// some converter methods for snapshotting
+auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const std::vector<std::vector<double>> &edges, int idim)
+{
+  Arrayhist hist(bandwidths.size());
+  for (int ibw = 0; ibw < bandwidths.size(); ++ibw) {
+    hist(ibw, 0) = double(bandwidths[ibw][idim]) / (edges[idim].size() - 1);
+    hist(ibw, 1) = 0.;
+  }
+
+  return hist;
+}
+
+
+
+auto vector_to_hist(const std::vector<double> &vec)
+{
+  Arrayhist hist(vec.size());
+  for (int ibin = 0; ibin < vec.size(); ++ibin) {
+    hist(ibin, 0) = vec[ibin];
+    hist(ibin, 1) = 0.;
+  }
+
+  return hist;
+}
+
 #endif

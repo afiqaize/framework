@@ -15,6 +15,7 @@
 #include "misc/rng_util.h"
 
 #include "array_histogram.h"
+#include "output_util.h"
 
 bool valid_name(const std::string &str)
 {
@@ -90,7 +91,7 @@ void unique_emplace(std::vector<std::vector<std::string>> &expressions, std::vec
 
   while( replace(full, toreplace, expression[0]) )
     ;
-  expressions.emplace_back(expression);
+  expressions.emplace_back(std::move(expression));
 }
 
 
@@ -282,7 +283,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       strip(ve[1]);
     else
       ve.emplace_back("");
-    expressions.emplace_back(ve);
+    expressions.emplace_back(std::move(ve));
 
     auto binstr = split(veb[1], ";");
     int nbinf = std::stoi(binstr[0]);
@@ -299,7 +300,6 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       fedges.emplace_back( make_interval(minf, maxf, (maxf - minf) / (fsplit * nbinf)) );
     }
     else if (binstr.size() > 2 and std::is_sorted(std::begin(cedge), std::end(cedge))) {
-      cedges.emplace_back( cedge );
       fedges.emplace_back( [&cedge, fsplit] {
         std::vector<double> fedge = {cedge[0]};
         for (int ic = 0; ic < cedge.size() - 1; ++ic)
@@ -307,6 +307,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
 
         return fedge;
       }() );
+      cedges.emplace_back( std::move(cedge) );
     }
     else {
       std::cerr << "Binning information for variable  " << ve[0] << " is invalid. Note that variables with only one bin is not accepted" << std::endl;
@@ -326,8 +327,8 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       expressions.emplace_back(we);
     }
     else {
-      std::cerr << "Invalid weight name " << we[0] << ". Skipping. Current version considers only names containing " 
-        "alphanumeric characters or underscores"<< std::endl;
+      std::cerr << "Invalid weight name " << we[0] << ". Ignoring the weight. Current version considers only names containing " 
+        "alphanumeric characters or underscores" << std::endl;
     }
   }
 
@@ -364,6 +365,8 @@ auto make_collection(Framework::Dataset<TChain> &dataset,
   using namespace Framework;
 
   const auto &variables = std::get<0>(variables_bins);
+  if (variables.empty())
+    throw std::runtime_error( "An error is encountered. Aborting." );
 
   // need to tag source branches i.e. those coming from source root file, which may be float
   std::vector<std::string> branches;
@@ -516,7 +519,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
                                      int npartition = 1,
                                      int iedge = 1,
                                      bool weighted = true,
-                                     bool refresh = false)
+                                     bool silent = false)
 {
   using namespace Framework;
 
@@ -533,7 +536,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
 
   const int nvar = bins.size();
 
-  static const auto ivars = [&variables, &nvar, &coll] () {
+  const auto ivars = [&variables, &nvar, &coll] () {
     std::vector<int> ivars(nvar);
     for (int ivar = 0; ivar < nvar; ++ivar)
       ivars[ivar] = coll.inquire(variables[ivar][0]);
@@ -547,9 +550,9 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
   for (int ipart = 0; ipart < npartition; ++ipart)
     hists.emplace_back(Arrayhist(nbin));
 
-  static auto rng = random_generator<>();
+  thread_local auto rng = random_generator<>();
   auto dist = std::uniform_int_distribution{0, npartition - 1};
-  static std::vector<double> values(nvar);
+  std::vector<double> values(nvar);
 
   auto fwgt = [npartition, &dist] (std::vector<Arrayhist> &hists, int ibin, const auto &wgt) {
     int ipart = (npartition == 1) ? 0 : dist(rng);
@@ -563,7 +566,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     hists[ipart](ibin, 1) += 1.;
   };
 
-  auto fwdouble = [&coll, &hists, &bins, nvar, iweight, &fwgt] (long long entry) {
+  auto fwdouble = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
     coll.populate(entry);
 
     double wgt = coll.get<double>(iweight, 0);
@@ -575,7 +578,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     fwgt(hists, ibin, wgt);
   };
 
-  auto fwfloat = [&coll, &hists, &bins, nvar, iweight, &fwgt] (long long entry) {
+  auto fwfloat = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
     coll.populate(entry);
 
     double wgt = coll.get<float>(iweight, 0);
@@ -587,7 +590,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     fwgt(hists, ibin, wgt);
   };
 
-  auto fodouble = [&coll, &hists, &bins, nvar, &fone] (long long entry) {
+  auto fodouble = [&coll, &hists, &bins, &values, &ivars, nvar, &fone] (long long entry) {
     coll.populate(entry);
 
     for (int ivar = 0; ivar < nvar; ++ivar)
@@ -597,7 +600,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     fone(hists, ibin);
   };
 
-  auto fofloat = [&coll, &hists, &bins, nvar, &fone] (long long entry) {
+  auto fofloat = [&coll, &hists, &bins, &values, &ivars, nvar, &fone] (long long entry) {
     coll.populate(entry);
 
     for (int ivar = 0; ivar < nvar; ++ivar)
@@ -620,30 +623,24 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
       dataset.set_analyzer(fofloat, true);
   }
 
-  static bool silent = refresh;
-  if (refresh)
-    silent = false;
-
   dataset.analyze(-1, -1, silent);
-  silent = true;
 
   return hists;
 }
 
 
 
-auto make_histogram_set(const std::vector<std::string> &files,
+void make_histogram_set(const std::vector<std::string> &files,
                         const std::string &tree,
-                        const std::tuple<
-                        std::vector<std::vector<std::string>>,
-                        std::vector<std::vector<double>>,
-                        std::vector<std::vector<double>>,
-                        std::string> &variables_bins)
+                        const std::vector<std::string> &variables, const std::string &weight,
+                        const std::string &output)
 {
+  auto variables_bins = variables_and_binning(variables, weight);
   Framework::Dataset<TChain> dataset("dataset", tree);
   dataset.set_files(files);
   auto coll = make_collection(dataset, variables_bins);
-  return count_and_bin(dataset, coll, variables_bins, 1, 1);
+  auto histogram = count_and_bin(dataset, coll, variables_bins, 1, 1);
+  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0]));
 }
 
 #endif
