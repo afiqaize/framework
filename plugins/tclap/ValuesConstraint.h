@@ -48,7 +48,7 @@ class ValuesConstraint : public Constraint<T>
 		 * Constructor. 
 		 * \param allowed - vector of allowed values. 
 		 */
-		ValuesConstraint(std::vector<T>& allowed);	
+		ValuesConstraint(const std::vector<T>& allowed);	
 
 		/**
 		 * Virtual destructor.
@@ -87,7 +87,7 @@ class ValuesConstraint : public Constraint<T>
 };
 
 template<class T>
-ValuesConstraint<T>::ValuesConstraint(std::vector<T>& allowed)
+ValuesConstraint<T>::ValuesConstraint(const std::vector<T>& allowed)
 : _allowed(allowed),
   _typeDesc("")
 { 
