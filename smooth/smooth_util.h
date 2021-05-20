@@ -202,7 +202,7 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
   const int nvar = coarse_edges.size(), nbin = eval_n.size();
   thread_local Workspace wsp(nbin, nvar);
   /*
-  for (int ib = 0; ib < eval_n.size(); ++ib)
+  for (int ib = 0; ib < nbin; ++ib)
     std::cout << ib << " " << eval_n(ib, 0) << " " << eval_n(ib, 1) << " " << eval_h(ib, 0) << " " << eval_h(ib, 1) << " " << eval_l(ib, 0) << " " << eval_l(ib, 1) << "\n";
   */
   auto f_best_scale_num_den = [] (const Arrayhist &nominal, const Arrayhist &varied, const Arrayhist &rdev,
@@ -618,37 +618,20 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
         threads[0] = std::thread(f_fill_binom, std::cref(params_n), std::cref(average_n), std::ref(trev_n[iusepart]));
         threads[1] = std::thread(f_fill_binom, std::cref(params_h), std::cref(average_h), std::ref(trev_h[iusepart]));
         threads[2] = std::thread(f_fill_binom, std::cref(params_l), std::cref(average_l), std::ref(trev_l[iusepart]));
-        /*
-        for (int ibin = 0; ibin < nfbin; ++ibin) {
-          dist->param(params_n[ibin]);
-          const auto ibn = (*dist)(*rng);
-          trev_n[iusepart](ibin, 0) = (*average_n)(ibin, 0) * ibn;
-          trev_n[iusepart](ibin, 1) = (*average_n)(ibin, 1) * ibn * ibn;
-
-          dist->param(params_h[ibin]);
-          const auto ibh = (*dist)(*rng);
-          trev_h[iusepart](ibin, 0) = (*average_h)(ibin, 0) * ibh;
-          trev_h[iusepart](ibin, 1) = (*average_h)(ibin, 1) * ibh * ibh;
-
-          dist->param(params_l[ibin]);
-          const auto ibl = (*dist)(*rng);
-          trev_l[iusepart](ibin, 0) = (*average_l)(ibin, 0) * ibl;
-          trev_l[iusepart](ibin, 1) = (*average_l)(ibin, 1) * ibl * ibl;
-        }
-        */
       }
       else if (iusepart == 0) {
-        threads[0] = std::thread(f_fill_coll, std::ref(data_n), std::ref(coll_n), std::cref(variables_n), std::ref(trev_n));
-        threads[1] = std::thread(f_fill_coll, std::ref(data_h), std::ref(coll_h), std::cref(variables_h), std::ref(trev_h));
-        threads[2] = std::thread(f_fill_coll, std::ref(data_l), std::ref(coll_l), std::cref(variables_l), std::ref(trev_l));
-        /*
-        trev_n = count_and_bin(data_n, coll_n, variables_n, npartition, 2, true, true);
-        trev_h = count_and_bin(data_h, coll_h, variables_h, npartition, 2, true, true);
-        trev_l = count_and_bin(data_l, coll_l, variables_l, npartition, 2, true, true);
-        */
+        //threads[0] = std::thread(f_fill_coll, std::ref(data_n), std::ref(coll_n), std::cref(variables_n), std::ref(trev_n));
+        //threads[1] = std::thread(f_fill_coll, std::ref(data_h), std::ref(coll_h), std::cref(variables_h), std::ref(trev_h));
+        //threads[2] = std::thread(f_fill_coll, std::ref(data_l), std::ref(coll_l), std::cref(variables_l), std::ref(trev_l));
+
+        // FIXME something about Allocator/TTree::Notify() is not thread safe, so this crashes when there are >1 files
+        // use single thread for now, the loops are fast enough
+        f_fill_coll(data_n, coll_n, variables_n, trev_n);
+        f_fill_coll(data_h, coll_h, variables_h, trev_h);
+        f_fill_coll(data_l, coll_l, variables_l, trev_l);
       }
 
-      if (binomial or iusepart == 0) {
+      if (binomial) {
         for (int ith = 0; ith < 3; ++ith)
           threads[ith].join();
       }
@@ -776,11 +759,11 @@ void smooth_templates(const std::vector<std::string> &files,
                       const std::string &output)
 {
   if (type == "weight" and weight.size() != 3)
-    throw std::runtime_error( "Number of weight expressions has to be 3 if --type is weight. Aborting." );
+    throw std::runtime_error( "smooth_templates() :: number of weight expressions has to be 3 if --type is weight. Aborting." );
 
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
-  auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0]);
+  auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0], files, tree);
   auto coll_n = make_collection(data_n, variables_n);
 
   auto fvary_h = files;
@@ -790,7 +773,7 @@ void smooth_templates(const std::vector<std::string> &files,
   }
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);
-  auto variables_h = (type == "tree") ? variables_n : variables_and_binning(variables, weight[1]);
+  auto variables_h = (type == "tree") ? variables_n : variables_and_binning(variables, weight[1], fvary_h, tree);
   auto coll_h = make_collection(data_h, variables_h);
 
   auto fvary_l = fvary_h;
@@ -800,7 +783,7 @@ void smooth_templates(const std::vector<std::string> &files,
   }
   Framework::Dataset<TChain> data_l("data_l", tree);
   data_l.set_files(fvary_l);
-  auto variables_l = (type == "tree") ? variables_n : variables_and_binning(variables, weight[2]);
+  auto variables_l = (type == "tree") ? variables_n : variables_and_binning(variables, weight[2], fvary_l, tree);
   auto coll_l = make_collection(data_l, variables_l);
 
   // FIXME implement equiprobable binning and bin map editing here?
