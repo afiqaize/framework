@@ -243,14 +243,17 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 
 
 
-/// arguments: vector of strings as expected by --variable and --weight CL options
+/// arguments: vector of strings as expected by --variable and --weight CL options, and input file names for source branch promotion to double
 /// returns a tuple containing three vectors
 /// first contains variables and (parsed) expressions information
 /// second is the coarse binning information i.e. exactly as requested
 /// third is fine binning, i.e. coarse split into n bins along each dimension, n being dimension-specific
-/// in any case anything is invalid, returned output is blank 
-auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight)
+/// in any case where anything is invalid, returned output is blank
+/// segfaults at dataset.analyze() if the source promotion is done within a make_collection for yet to be understood reasons
+auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight, const std::vector<std::string> &files, const std::string &tree)
 {
+  using namespace Framework;
+
   static const std::vector<int> fsplits = {12, 5, 3, 2};
   auto fsplit = (variables.size() > 2) ? fsplits.back() : fsplits[variables.size() - 1];
 
@@ -347,7 +350,40 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       std::cout << var << " -- ";
     std::cout << std::endl;
   }
+  std::cout << "     ----------------     " << std::endl;
   ****  end testing of expression parser  ****/
+
+  Dataset<TChain> dataset("dataset", tree);
+  dataset.set_files(files);
+
+  // tag source branches i.e. those coming from source root file, which may be float
+  std::vector<std::string> branches;
+  Collection<float, double> src("src", expressions.size());
+  for (const auto &var : expressions) {
+    if (var.size() == 2 and var[1] == "") {
+      src.add_attribute(var[0], var[0]);
+      branches.emplace_back(var[0]);
+    }
+  }
+  dataset.associate(src);
+
+  // promote source attributes to double if float
+  for (const auto &branch : branches) {
+    const bool isfloat = src.get_if<float>(branch) != nullptr;
+
+    if (isfloat) {
+      auto name = random_variable_name(3);
+      while (std::find_if(std::begin(expressions), std::end(expressions), [&name] (auto &var) { return var[0] == name; }) != std::end(expressions))
+        name = random_variable_name(3);
+
+      auto ib = std::find_if(std::begin(expressions), std::end(expressions), [&branch] (auto &var) { return var[0] == branch; });
+      (*ib)[0] = name;
+      (*ib)[1] = "__source__(";
+      ib->emplace_back(branch);
+
+      expressions.emplace_back(std::vector<std::string>{branch, "__promote__(", name});
+    }
+  }
 
   return std::make_tuple(std::move(expressions), std::move(cedges), std::move(fedges), we[0]);
 }
@@ -366,23 +402,16 @@ auto make_collection(Framework::Dataset<TChain> &dataset,
 
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
-    throw std::runtime_error( "An error is encountered. Aborting." );
+    throw std::runtime_error( "make_collection() :: an error is encountered. aborting." );
 
-  // need to tag source branches i.e. those coming from source root file, which may be float
-  std::vector<std::string> branches;
   Collection<float, double> coll("coll", variables.size());
   for (const auto &var : variables) {
-    if (var.size() == 2 and var[1] == "") {
-      coll.add_attribute(var[0], var[0]);
-      branches.emplace_back(var[0]);
-    }
+    if (var.size() == 2 and var[1] == "")
+      coll.add_attribute(var[0], var[0], 1.);
+    else if (var.size() > 2 and var[1] == "__source__(")
+      coll.add_attribute(var[0], var[2], 1.f);
   }
   dataset.associate(coll);
-
-  // used for all other branches too, please no shenanigans like weight and variables being of different types
-  const bool isdouble = coll.get_if<double>((*std::find_if(std::begin(variables), std::end(variables), [] (auto &ve) {
-        return ve[1] == ""; 
-      }))[0]) != nullptr;
 
   while (coll.n_attributes() != variables.size()) {
     for (const auto &var : variables) {
@@ -392,108 +421,42 @@ auto make_collection(Framework::Dataset<TChain> &dataset,
           isthere = isthere and coll.has_attribute(var[iarg]);
 
         if (isthere) {
-          if (var[1] == "exp(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::exp(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::exp(x);}, var[2]);
-          }
-          else if (var[1] == "log(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::log(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::log(x);}, var[2]);
-          }
-          else if (var[1] == "log10(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::log10(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::log10(x);}, var[2]);
-          }
-          else if (var[1] == "sin(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::sin(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::sin(x);}, var[2]);
-          }
-          else if (var[1] == "cos(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::cos(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::cos(x);}, var[2]);
-          }
-          else if (var[1] == "tan(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::tan(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::tan(x);}, var[2]);
-          }
-          else if (var[1] == "asin(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::asin(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::asin(x);}, var[2]);
-          }
-          else if (var[1] == "acos(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::acos(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::acos(x);}, var[2]);
-          }
-          else if (var[1] == "atan(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::atan(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::atan(x);}, var[2]);
-          }
-          else if (var[1] == "sqrt(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::sqrt(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::sqrt(x);}, var[2]);
-          }
-          else if (var[1] == "abs(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return std::abs(x);}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return std::abs(x);}, var[2]);
-          }
-          else if (var[1] == "negate(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return -x;}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
-          }
-          else if (var[1] == "invert(") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x) {return 1. / x;}, var[2]);
-            else
-              coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
-          }
-          else if (var[1] == "+") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x, float y) {return x + y;}, var[2], var[3]);
-            else
-              coll.transform_attribute(var[0], [] (double x, double y) {return x + y;}, var[2], var[3]);
-          }
-          else if (var[1] == "-") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x, float y) {return x - y;}, var[2], var[3]);
-            else
-              coll.transform_attribute(var[0], [] (double x, double y) {return x - y;}, var[2], var[3]);
-          }
-          else if (var[1] == "*") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x, float y) {return x * y;}, var[2], var[3]);
-            else
-              coll.transform_attribute(var[0], [] (double x, double y) {return x * y;}, var[2], var[3]);
-          }
-          else if (var[1] == "/") {
-            if (!isdouble)
-              coll.transform_attribute(var[0], [] (float x, float y) {return x / y;}, var[2], var[3]);
-            else
-              coll.transform_attribute(var[0], [] (double x, double y) {return x / y;}, var[2], var[3]);
-          }
+          if (var[1] == "exp(")
+            coll.transform_attribute(var[0], [] (double x) {return std::exp(x);}, var[2]);
+          else if (var[1] == "log(")
+            coll.transform_attribute(var[0], [] (double x) {return std::log(x);}, var[2]);
+          else if (var[1] == "log10(")
+            coll.transform_attribute(var[0], [] (double x) {return std::log10(x);}, var[2]);
+          else if (var[1] == "sin(")
+            coll.transform_attribute(var[0], [] (double x) {return std::sin(x);}, var[2]);
+          else if (var[1] == "cos(")
+            coll.transform_attribute(var[0], [] (double x) {return std::cos(x);}, var[2]);
+          else if (var[1] == "tan(")
+            coll.transform_attribute(var[0], [] (double x) {return std::tan(x);}, var[2]);
+          else if (var[1] == "asin(")
+            coll.transform_attribute(var[0], [] (double x) {return std::asin(x);}, var[2]);
+          else if (var[1] == "acos(")
+            coll.transform_attribute(var[0], [] (double x) {return std::acos(x);}, var[2]);
+          else if (var[1] == "atan(")
+            coll.transform_attribute(var[0], [] (double x) {return std::atan(x);}, var[2]);
+          else if (var[1] == "sqrt(")
+            coll.transform_attribute(var[0], [] (double x) {return std::sqrt(x);}, var[2]);
+          else if (var[1] == "abs(")
+            coll.transform_attribute(var[0], [] (double x) {return std::abs(x);}, var[2]);
+          else if (var[1] == "negate(")
+            coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
+          else if (var[1] == "invert(")
+            coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
+          else if (var[1] == "__promote__(")
+            coll.transform_attribute(var[0], [] (float x) {return double(x);}, var[2]);
+          else if (var[1] == "+")
+            coll.transform_attribute(var[0], [] (double x, double y) {return x + y;}, var[2], var[3]);
+          else if (var[1] == "-")
+            coll.transform_attribute(var[0], [] (double x, double y) {return x - y;}, var[2], var[3]);
+          else if (var[1] == "*")
+            coll.transform_attribute(var[0], [] (double x, double y) {return x * y;}, var[2], var[3]);
+          else if (var[1] == "/")
+            coll.transform_attribute(var[0], [] (double x, double y) {return x / y;}, var[2], var[3]);
         }
       }
     }
@@ -524,15 +487,10 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
   using namespace Framework;
 
   const auto &variables = std::get<0>(variables_bins);
-  const std::vector<std::vector<double>> &bins = (iedge == 1) ? std::get<1>(variables_bins) : std::get<2>(variables_bins);
+  const auto &bins = (iedge == 1) ? std::get<1>(variables_bins) : std::get<2>(variables_bins);
   const auto &weight = std::get<3>(variables_bins);
 
   dataset.associate(coll);
-
-  // used for all other branches too, please no shenanigans like weight and variables being of different types
-  const bool isdouble = coll.get_if<double>((*std::find_if(std::begin(variables), std::end(variables), [] (auto &ve) {
-        return ve[1] == ""; 
-      }))[0]) != nullptr;
 
   const int nvar = bins.size();
 
@@ -566,62 +524,31 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     hists[ipart](ibin, 1) += 1.;
   };
 
-  auto fwdouble = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
+  auto f_analyze_wgt = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
     coll.populate(entry);
-
     double wgt = coll.get<double>(iweight, 0);
 
     for (int ivar = 0; ivar < nvar; ++ivar)
       values[ivar] = coll.get<double>(ivars[ivar], 0);
-    auto ibin = find_bin(values, bins);
 
+    auto ibin = find_bin(values, bins);
     fwgt(hists, ibin, wgt);
   };
 
-  auto fwfloat = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
-    coll.populate(entry);
-
-    double wgt = coll.get<float>(iweight, 0);
-
-    for (int ivar = 0; ivar < nvar; ++ivar)
-      values[ivar] = coll.get<float>(ivars[ivar], 0);
-    auto ibin = find_bin(values, bins);
-
-    fwgt(hists, ibin, wgt);
-  };
-
-  auto fodouble = [&coll, &hists, &bins, &values, &ivars, nvar, &fone] (long long entry) {
+  auto f_analyze_one = [&coll, &hists, &bins, &values, &ivars, nvar, &fone] (long long entry) {
     coll.populate(entry);
 
     for (int ivar = 0; ivar < nvar; ++ivar)
       values[ivar] = coll.get<double>(ivars[ivar], 0);
-    auto ibin = find_bin(values, bins);
 
+    auto ibin = find_bin(values, bins);
     fone(hists, ibin);
   };
 
-  auto fofloat = [&coll, &hists, &bins, &values, &ivars, nvar, &fone] (long long entry) {
-    coll.populate(entry);
-
-    for (int ivar = 0; ivar < nvar; ++ivar)
-      values[ivar] = coll.get<float>(ivars[ivar], 0);
-    auto ibin = find_bin(values, bins);
-
-    fone(hists, ibin);
-  };
-
-  if (weighted and iweight != -1) {
-    if (isdouble)
-      dataset.set_analyzer(fwdouble, true);
-    else
-      dataset.set_analyzer(fwfloat, true);
-  }
-  else {
-    if (isdouble)
-      dataset.set_analyzer(fodouble, true);
-    else
-      dataset.set_analyzer(fofloat, true);
-  }
+  if (weighted and iweight != -1)
+    dataset.set_analyzer(f_analyze_wgt, true);
+  else
+    dataset.set_analyzer(f_analyze_one, true);
 
   dataset.analyze(-1, -1, silent);
 
@@ -635,7 +562,7 @@ void make_histogram_set(const std::vector<std::string> &files,
                         const std::vector<std::string> &variables, const std::string &weight,
                         const std::string &output)
 {
-  auto variables_bins = variables_and_binning(variables, weight);
+  auto variables_bins = variables_and_binning(variables, weight, files, tree);
   Framework::Dataset<TChain> dataset("dataset", tree);
   dataset.set_files(files);
   auto coll = make_collection(dataset, variables_bins);
