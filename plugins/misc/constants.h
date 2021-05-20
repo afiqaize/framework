@@ -37,10 +37,10 @@ namespace Framework {
 
     // quarks are inherently problematic, so use with care
     template <typename T = float>
-    constexpr T m_bottom   = T(4.18L);
+    constexpr T m_bottom   = T(4.7L); // <- pole msbar -> T(4.18L);
 
     template <typename T = float>
-    constexpr T m_top      = T(172.76L);
+    constexpr T m_top      = T(172.5L); // T(172.76L);
 
     template <typename T = float>
     constexpr T m_w        = T(80.379L);

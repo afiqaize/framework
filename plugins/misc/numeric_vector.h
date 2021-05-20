@@ -190,4 +190,55 @@ auto system_rapidity() -> decltype(system_rapidity_helper<Number>(std::make_inde
   return system_rapidity_helper<Number>(std::make_index_sequence<4 * N>{});
 }
 
+
+
+// no longer needs explaining does it
+template <typename Number, typename ...Numbers>
+Number system_eta_impl(Number number, Numbers ...numbers) 
+{ 
+  const auto &p4 = multivector_system(number, numbers...);
+  return p4.Eta();
+}
+
+
+
+template <typename Number, size_t ...N>
+auto system_eta_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
+{
+  return system_eta_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
+}
+
+
+
+template <size_t N = 2, typename Number = float>
+auto system_eta() -> decltype(system_eta_helper<Number>(std::make_index_sequence<4 * N>{}))
+{
+  return system_eta_helper<Number>(std::make_index_sequence<4 * N>{});
+}
+
+
+
+template <typename Number, typename ...Numbers>
+Number system_phi_impl(Number number, Numbers ...numbers) 
+{ 
+  const auto &p4 = multivector_system(number, numbers...);
+  return p4.Phi();
+}
+
+
+
+template <typename Number, size_t ...N>
+auto system_phi_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
+{
+  return system_phi_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
+}
+
+
+
+template <size_t N = 2, typename Number = float>
+auto system_phi() -> decltype(system_phi_helper<Number>(std::make_index_sequence<4 * N>{}))
+{
+  return system_phi_helper<Number>(std::make_index_sequence<4 * N>{});
+}
+
 #endif
