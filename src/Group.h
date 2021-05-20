@@ -50,6 +50,10 @@ namespace Framework {
     /// ref instead of copy of the above
     const int& ref_to_n_elements() const noexcept;
 
+    /// such that if (Group) is a well-defined expression
+    /// and to no longer need to do if (Group.n_elements)
+    explicit operator bool() const { return selected > 0; };
+
     /// a mutable ref version
     /// can't be const if it's to be used to write TTree...
     /// might be worth considering to write TTree using copies rather than in-place references?
