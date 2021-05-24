@@ -258,10 +258,8 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
   plane_h.reserve(nbin);
   smooth_h.reserve(nbin);
 
-  if (!samebw) {
-    plane_l.reserve(nbin);
-    smooth_l.reserve(nbin);
-  }
+  plane_l.reserve(nbin);
+  smooth_l.reserve(nbin);
 
   auto rdev_sm_h = Arrayhist(nbin), rdev_sm_l = Arrayhist(nbin);
 
@@ -300,9 +298,7 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
       icenter[iv] = index_1n(ibin, iv, fine_edges);
 
     plane_h.emplace_back(ibin);
-
-    if (!samebw)
-      plane_l.emplace_back(ibin);
+    plane_l.emplace_back(ibin);
 
     for (int ib = 0; ib < nbin; ++ib) {
       if (ib == ibin)
