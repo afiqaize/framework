@@ -52,7 +52,7 @@ auto relative_deviation(const Arrayhist &nominal, const Arrayhist &varied)
 {
   auto deviation = Arrayhist(nominal.size());
   for (int ibin = 0; ibin < nominal.size(); ++ibin) {
-    if (nominal(ibin, 0) > 0. and varied(ibin, 0) > 0.) {
+    if (nominal(ibin, 0) != 0. and varied(ibin, 0) != 0. and nominal(ibin, 0) / varied(ibin, 0) > 0.) {
       deviation(ibin, 0) = (varied(ibin, 0) / nominal(ibin, 0)) - 1.;
 
       deviation(ibin, 1) = varied(ibin, 1) / (varied(ibin, 0) * varied(ibin, 0));
