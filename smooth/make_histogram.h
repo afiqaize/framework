@@ -567,7 +567,12 @@ void make_histogram_set(const std::vector<std::string> &files,
   dataset.set_files(files);
   auto coll = make_collection(dataset, variables_bins);
   auto histogram = count_and_bin(dataset, coll, variables_bins, 1, 1);
-  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0]));
+
+  const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"}},
+                                      std::vector<std::vector<double>>{ make_interval(0., double(std::get<1>(variables_bins).size()), 1.) },
+                                      std::vector<std::vector<double>>{}, std::string{});
+
+  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0]), array_to_root(nbvars, "nbin", std::get<1>(nbvars), nbin_hist(variables_bins)));
 }
 
 #endif

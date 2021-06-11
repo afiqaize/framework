@@ -792,7 +792,12 @@ void smooth_templates(const std::vector<std::string> &files,
 
   auto result = smooth_templates_impl(data_n, data_h, data_l, coll_n, coll_h, coll_l, variables_n, variables_h, variables_l, systematic,
                                       symmetrize, binomial, npartition, nrepeatcv, snapshot, fixed_bandwidth);
-  save_all_as(output, result);
+
+  const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"}},
+                                      std::vector<std::vector<double>>{ make_interval(0., double(std::get<1>(variables_n).size()), 1.) },
+                                      std::vector<std::vector<double>>{}, std::string{});
+
+  save_all_as(output, result, array_to_root(nbvars, "nbin", std::get<1>(nbvars), nbin_hist(variables_n)));
 }
 
 // FIXME to do:
