@@ -9,15 +9,19 @@
 #include "TSystem.h"
 #include "TString.h"
 
-/// poor man's version of file finder by extension
-std::vector<std::string> file_by_ext(const std::string &dir, const std::string &ext)
+/// poor man's version of file finder by an expression
+std::vector<std::string> file_by_ext(const std::string &dir, const std::string &exp)
 {
+  std::vector<std::string> v_file;
+  if (exp.empty())
+    return v_file;
+
   // which really relies on ROOT's ability to run shell commands aha
-  TString allfile = gSystem->GetFromPipe(("find " + dir + " -type f -name '*" + ext + "'").c_str());
+  const std::string ext = (exp[0] == '.') ?  " -type f -name '*" + exp + "'"  : " -type f -name '" + exp + "'";
+  TString allfile = gSystem->GetFromPipe(("find " + dir + exp).c_str());
   TString file;
   Ssiz_t index = 0;
 
-  std::vector<std::string> v_file;
   while (allfile.Tokenize(file, index, "\n"))
     v_file.emplace_back(file.Data());
 

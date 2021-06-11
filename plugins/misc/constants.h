@@ -12,7 +12,7 @@ namespace Framework {
     constexpr T sqrt2      = T(1.4142135623730950488L);
 
     template <typename T = float>
-    constexpr T ln2        = T(6.9314718055994530941L);
+    constexpr T ln2        = T(0.69314718055994530941L);
 
     template <typename T = float>
     constexpr T pi         = T(3.1415926535897932384L);
