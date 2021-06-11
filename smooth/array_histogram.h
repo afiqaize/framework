@@ -240,6 +240,28 @@ auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const st
 
 
 
+/// make a single histogram with nvar bins
+/// and each bin i has a content of nbin of ith variable
+Arrayhist nbin_hist(const std::tuple<
+                    std::vector<std::vector<std::string>>,
+                    std::vector<std::vector<double>>,
+                    std::vector<std::vector<double>>,
+                    std::string> &variables_bins)
+{
+  const auto &bins = std::get<1>(variables_bins);
+  const int nvar = bins.size();
+
+  Arrayhist hist(nvar);
+  for (int iv = 0; iv < nvar; ++iv) {
+    hist(iv, 0) = bins[iv].size() - 1;
+    hist(iv, 1) = 0.;
+  }
+
+  return hist;
+}
+
+
+
 auto vector_to_hist(const std::vector<double> &vec)
 {
   Arrayhist hist(vec.size());
