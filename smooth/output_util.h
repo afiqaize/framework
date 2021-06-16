@@ -69,7 +69,7 @@ std::vector<std::unique_ptr<TH1>> array_to_root(const std::tuple<
     idx.reserve(edges.size());
 
   for (int ibin = 0; ibin < nbin; ++ibin) {
-    if (std::isnan(hist(ibin, 0)) or std::isnan(hist(ibin, 1)) or std::signbit(hist(ibin, 1)))
+    if (std::isnan(hist(ibin, 0)) or std::isnan(hist(ibin, 1)) or hist(ibin, 1) < 0.)
       continue;
 
     result[0]->SetBinContent(ibin + 1, hist(ibin, 0));

@@ -61,7 +61,7 @@ auto relative_deviation(const Arrayhist &nominal, const Arrayhist &varied)
     }
     else {
       deviation(ibin, 0) = 0.;
-      deviation(ibin, 0) = 0.;
+      deviation(ibin, 1) = 0.;
     }
   }
 
@@ -88,7 +88,13 @@ auto symmetrize_variation(const Arrayhist &vary_h, const Arrayhist &vary_l)
 auto apply_deviation(const Arrayhist &nominal, const Arrayhist &deviation, double scale = 1.)
 {
   auto varied = Arrayhist(nominal.size());
+  if (nominal.size() != deviation.size())
+    return varied;
+
   for (int ibin = 0; ibin < nominal.size(); ++ibin) {
+    if (nominal(ibin, 0) == 0. or nominal(ibin, 1) <= 0.)
+      continue;
+
     const double scd = (scale * deviation(ibin, 0));
     const double scd2 = scd * scd;
     varied(ibin, 0) = (scd + 1.) * nominal(ibin, 0);
@@ -694,8 +700,17 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
   f_concatenate(result, array_to_root(variables_n, systematic + "_up_source_template", coarse_edges, coarse_h));
   f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_template", coarse_edges, coarse_l));
 
-  const auto coarse_smooth_h = rebin(apply_deviation(fine_n, smooth_rdev_h), fine_edges, coarse_edges);
-  const auto coarse_smooth_l = rebin(apply_deviation(fine_n, smooth_rdev_l), fine_edges, coarse_edges);
+  f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_template", fine_edges, fine_n));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_fine_source_template", fine_edges, fine_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_template", fine_edges, fine_l));
+
+  const auto fine_smooth_h = apply_deviation(fine_n, smooth_rdev_h);
+  const auto fine_smooth_l = apply_deviation(fine_n, smooth_rdev_l);
+  f_concatenate(result, array_to_root(variables_n, systematic + "_up_fine_smooth_template", fine_edges, fine_smooth_h));
+  f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_template", fine_edges, fine_smooth_l));
+
+  const auto coarse_smooth_h = rebin(fine_smooth_h, fine_edges, coarse_edges);
+  const auto coarse_smooth_l = rebin(fine_smooth_l, fine_edges, coarse_edges);
   f_concatenate(result, array_to_root(variables_n, systematic + "_up_smooth_template", coarse_edges, coarse_smooth_h));
   f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_template", coarse_edges, coarse_smooth_l));
 
