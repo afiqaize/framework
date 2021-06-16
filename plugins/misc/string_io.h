@@ -114,7 +114,7 @@ std::string& strip(std::string &str, const std::string &sub = " ")
 std::string join(const std::vector<std::string> &strs, const std::string &sep = " ")
 {
   auto str = (strs.empty()) ? "" : strs[0];
-  for (int istr = 1; istr < strs.size(); ++istr)
+  for (uint istr = 1; istr < strs.size(); ++istr)
     str += sep + strs[istr];
 
   return str;
