@@ -15,6 +15,8 @@ class Arrayhist {
 public:
   Arrayhist() = delete;
   Arrayhist(int nbin_) : nbin(nbin_), hist(std::make_unique<double[]>(2 * nbin)) {}
+  Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
+
   /*/ copy ctor, commented because not needed, but kept for reference
   Arrayhist(const Arrayhist &ah) : nbin(ah.nbin) {
     for (int ibin = 0; ibin < nbin; ++ibin) {
@@ -22,9 +24,8 @@ public:
       hist[ibin + nbin] = ah(ibin, 1);
     }
   }
-  */
-  Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
-  /*/ copy assign, commented because not needed, but kept for reference
+
+  // copy assign, commented because not needed, but kept for reference
   Arrayhist& operator=(const Arrayhist& ah) {
     nbin = ah.nbin;
     for (int ibin = 0; ibin < nbin; ++ibin) {
@@ -33,16 +34,16 @@ public:
     }
 
     return *this;
-  }
-  */
+  }*/
+
   Arrayhist& operator=(Arrayhist&& ah) {
     nbin = ah.nbin;
     std::swap(hist, ah.hist);
     return *this;
   }
 
-  double& operator()(int ibin, int variance) { return hist[ibin + (variance * nbin)]; }
-  const double& operator()(int ibin, int variance) const { return hist[ibin + (variance * nbin)]; }
+  double& operator()(int ibin, bool variance) { return hist[ibin + (variance * nbin)]; }
+  const double& operator()(int ibin, bool variance) const { return hist[ibin + (variance * nbin)]; }
   int size() const { return nbin; }
 
   double sumw() const {
