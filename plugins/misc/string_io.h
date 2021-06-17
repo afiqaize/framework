@@ -41,6 +41,12 @@ inline int count_substring(const std::string &str, const std::string &sub) {
 
 
 
+inline bool contain(const std::string &str, const std::string &sub) {
+  return count_substring(str, sub) > 0;
+}
+
+
+
 /// number to string; to_string tend to give more precision than needed
 template <typename Number> 
 std::string to_str(Number num, const int prec = -1, const bool fixed = false) 
