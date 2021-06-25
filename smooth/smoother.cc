@@ -15,9 +15,8 @@ int main(int argc, char** argv) {
   TCLAP::ValueArg<std::string> cmdtree("", "tree", "tree name of nominal and systematic files, if present.", true, "", "string", cmdbase);
   TCLAP::MultiArg<std::string> cmdvar("", "variable", std::string("variable(s) to use. ")
                                       + "variable names must correspond to branch names in the tree. "
-                                      + "example syntax: 'cHel : nbin;min;max' or 'mtt : edge1;edge2;...;edgeN' " 
+                                      + "example syntax: 'cHel : nbin;min,max' or 'mtt : edge1,edge2,...,edgeN' " 
                                       + "for fixed/variable binning respectively. "
-                                      + "whenever valid, fixed binning interpretation takes precedence. "
                                       + "expressions like 'c = <expression> : binning', can also be used. "
                                       + "accepted expressions are unary operations 'op(a)' or binary operations 'a op b'. "
                                       + "supported unary operations: exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate and invert. "
@@ -29,10 +28,11 @@ int main(int argc, char** argv) {
                                          + "has to be called 3 times if --type is weight i.e. systematic variations are in the form of event weights. "
                                          + "in this case, first weight is the nominal and second and third are the up and down variations respectively.",
                                          false, "string", cmdbase);
-  TCLAP::ValuesConstraint<std::string> allmode( {"histogram", "smooth"} );
+  TCLAP::ValuesConstraint<std::string> allmode( {"histogram", "systematic", "smooth"} );
   TCLAP::ValueArg<std::string> cmdmode("", "mode", std::string("runtime mode. currently available:\n")
-                                       + "histogram: make histograms of the provided files (--systematic related options are ignored) \n "
-                                       + "smooth: as histogram and also perform systematic smoothing\n"
+                                       + "histogram: make histograms of the provided files (--systematic related options are ignored)\n"
+                                       + "systematic: make nominal and systematic histograms\n"
+                                       + "smooth: as systematic and also perform smoothing on the systematic histograms\n"
                                        + ">1D histograms are unrolled, with the first dimension presented in bins of second variable and so on.",
                                        true, "", &allmode, cmdbase);
   TCLAP::ValueArg<std::string> cmdsyst("", "systematic", std::string("systematic uncertainty name. ")
@@ -55,6 +55,9 @@ int main(int argc, char** argv) {
                                     + "in cross-validation, a range of 0.05 - 1 is tested.", false, "double", cmdbase);
   TCLAP::ValueArg<int> cmdnpart("", "npartition", "number of partitions to be used in cross-validation.", false, 10, "integer", cmdbase);
   TCLAP::ValueArg<int> cmdnrepeat("", "nrepeatcv", "number of times cross-validation is to be repeated.", false, 10, "integer", cmdbase);
+  TCLAP::SwitchArg cmdoneside("", "one-side", std::string("when the systematic uncertainty is one-sided rather than up and down.\n")
+                              + "if --type is tree then the expected systematic file name is filename_systematic.root\n"
+                              + "and if --type is weight then --weight needs to be called 2 times.", cmdbase, false);
   TCLAP::SwitchArg cmdsymm("", "dont-symmetrize", "independently smooth the systematic deviations without symmetrizing.", cmdbase, true);
   TCLAP::SwitchArg cmdbinom("", "binomial", "use binomial approximation in cross-validation.", cmdbase, false);
   TCLAP::ValueArg<std::string> cmdoutput("", "output", "output file name containing the result, assumed to end with .root.",
@@ -67,10 +70,12 @@ int main(int argc, char** argv) {
   if (cmdmode.getValue() == "histogram")
     make_histogram_set(cmdfile.getValue(), cmdtree.getValue(), cmdvar.getValue(), (cmdweight.getValue().empty()) ? "" : cmdweight.getValue()[0],
                        cmdoutput.getValue());
-  else if (cmdmode.getValue() == "smooth")
-    smooth_templates(cmdfile.getValue(), cmdtree.getValue(), cmdvar.getValue(), cmdweight.getValue(), cmdsyst.getValue(), cmdtype.getValue(),
-                     cmdsymm.getValue(), cmdbinom.getValue(), cmdnpart.getValue(), cmdnrepeat.getValue(), cmdsnap.getValue(), cmdbwidth.getValue(),
-                     cmdoutput.getValue());
+  else if (cmdmode.getValue() == "systematic" or cmdmode.getValue() == "smooth") {
+    const bool dosmooth = cmdmode.getValue() == "smooth";
+    smooth_templates(cmdfile.getValue(), cmdtree.getValue(), cmdvar.getValue(), cmdweight.getValue(), cmdsyst.getValue(), cmdtype.getValue(), dosmooth,
+                     cmdoneside.getValue(), cmdsymm.getValue(), cmdbinom.getValue(), cmdnpart.getValue(), cmdnrepeat.getValue(),
+                     cmdsnap.getValue(), cmdbwidth.getValue(), cmdoutput.getValue());
+  }
   return 0;
 }
 

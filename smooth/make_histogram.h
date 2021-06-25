@@ -261,6 +261,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
   std::vector<std::vector<double>> cedges, fedges;
 
   for (const auto &var : variables) {
+    //std::cout << var << std::endl;
     auto veb = split(var, ":");
     if (veb.size() != 2) {
       std::cerr << "Variable or expression " << var << " is invalid" << std::endl;
@@ -288,12 +289,20 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       ve.emplace_back("");
     expressions.emplace_back(std::move(ve));
 
-    auto binstr = split(veb[1], ";");
-    int nbinf = std::stoi(binstr[0]);
-    double minf = (binstr.size() == 3) ? std::stod(binstr[1]) : 0., maxf = (binstr.size() == 3) ? std::stod(binstr[2]) : 0.;
-    const auto cedge = [&binstr] {
+    auto binstyle = split(veb[1], ";");
+    int nbinf = (binstyle.size() == 2) ? std::stoi(binstyle[0]) : 0;
+    const auto [minf, maxf] = [&binstyle] () {
+      const auto minmax = (binstyle.size() == 2) ? split(binstyle[1], ",") : std::vector<std::string>{};
+      return (minmax.size() == 2) ? std::make_pair(std::stod(minmax[0]), std::stod(minmax[1])) : std::make_pair(0., 0.); 
+    } ();
+
+    const auto cedge = [&binning = veb[1]] {
       std::vector<double> cedge;
-      for (const auto &edge : binstr)
+      if (contain(binning, ";"))
+        return cedge;
+
+      const auto binrng = split(binning, ",");
+      for (const auto &edge : binrng)
         cedge.emplace_back(std::stod(edge));
       return cedge;
     }();
@@ -302,7 +311,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       cedges.emplace_back( make_interval(minf, maxf, (maxf - minf) / nbinf) );
       fedges.emplace_back( make_interval(minf, maxf, (maxf - minf) / (fsplit * nbinf)) );
     }
-    else if (binstr.size() > 2 and std::is_sorted(std::begin(cedge), std::end(cedge))) {
+    else if (cedge.size() > 2 and std::is_sorted(std::begin(cedge), std::end(cedge))) {
       fedges.emplace_back( [&cedge, fsplit] {
         std::vector<double> fedge = {cedge[0]};
         for (int ic = 0; ic < cedge.size() - 1; ++ic)

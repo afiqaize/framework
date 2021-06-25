@@ -202,8 +202,7 @@ auto multiply(const Arrayhist &h1, const Arrayhist &h2, bool exact1 = false, boo
   for (int ibin = 0; ibin < h1.size(); ++ibin) {
     result(ibin, 0) = h1(ibin, 0) * h2(ibin, 0);
     result(ibin, 1) = (exact1) ? 0. : h1(ibin, 1) * h2(ibin, 0) * h2(ibin, 0);
-    result(ibin, 1) = (exact2 and h1(ibin, 0) != 0. and h2(ibin, 0) != 0.) ? result(ibin, 1) : 
-      result(ibin, 0) * result(ibin, 0) * ((h1(ibin, 1) / h1(ibin, 0) / h1(ibin, 0)) + (h2(ibin, 1) / h2(ibin, 0) / h2(ibin, 0)));
+    result(ibin, 1) += (exact2) ? 0. : h2(ibin, 1) * h1(ibin, 0) * h1(ibin, 0);
   }
 
   return result;
@@ -217,9 +216,8 @@ auto divide(const Arrayhist &h1, const Arrayhist &h2, bool exact1 = false, bool 
 
   for (int ibin = 0; ibin < h1.size(); ++ibin) {
     result(ibin, 0) = (h2(ibin, 0) != 0.) ? h1(ibin, 0) / h2(ibin, 0) : 0.;
-    result(ibin, 1) = (exact1 and h2(ibin, 0) != 0.) ? 0. : h1(ibin, 1) / h2(ibin, 0) / h2(ibin, 0);
-    result(ibin, 1) = (exact2 and h1(ibin, 0) != 0. and h2(ibin, 0) != 0.) ? result(ibin, 1) : 
-      result(ibin, 0) * result(ibin, 0) * ((h1(ibin, 1) / h1(ibin, 0) / h1(ibin, 0)) + (h2(ibin, 1) / h2(ibin, 0) / h2(ibin, 0)));
+    result(ibin, 1) = (exact1 or h2(ibin, 0) == 0.) ? 0. : h1(ibin, 1) / h2(ibin, 0) / h2(ibin, 0);
+    result(ibin, 1) += (exact2 or h2(ibin, 0) == 0.) ? 0. : h2(ibin, 1) * result(ibin, 0) * result(ibin, 0) / h2(ibin, 0) / h2(ibin, 0);
   }
 
   return result;
