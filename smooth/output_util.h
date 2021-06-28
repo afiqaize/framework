@@ -22,17 +22,18 @@ std::vector<std::unique_ptr<TH1>> array_to_root(const std::tuple<
                                                 std::string> &variables,
                                                 const std::string &tag,
                                                 const std::vector<std::vector<double>> &edges,
-                                                const Arrayhist &hist)
+                                                const Arrayhist &hist,
+                                                bool reroll = false)
 {
   std::vector<std::unique_ptr<TH1>> result;
   if (edges.empty())
     return result;
 
-  const int nbin = count_nbin(edges);
+  const int nbin = count_nbin(edges), nvar = edges.size();
   if (hist.size() != nbin)
     return result;
 
-  const std::string vars = [nvar = edges.size()] (const auto& variables) {
+  const std::string vars = [nvar] (const auto& variables) {
     auto str = std::get<0>(variables)[0][0];
     for (int istr = 1; istr < nvar; ++istr)
       str = str + "_" + std::get<0>(variables)[istr][0];
@@ -41,19 +42,19 @@ std::vector<std::unique_ptr<TH1>> array_to_root(const std::tuple<
   }(variables);
   const std::string ftag = (tag != "") ? "_" + tag : tag;
 
-  if (edges.size() == 1) {
+  if (nvar == 1) {
     result.emplace_back( std::make_unique<TH1D>((vars + ftag).c_str(), join({"", std::get<0>(variables)[0][0]}, ";").c_str(),
                                                 nbin, edges[0].data()) );
   }
   else
     result.emplace_back( std::make_unique<TH1D>((vars + "_unroll" + ftag).c_str(), ";unrolled bin index", nbin, 0., nbin) );
 
-  if (edges.size() == 2) {
+  if (reroll and nvar == 2) {
     result.emplace_back( std::make_unique<TH2D>((vars + ftag).c_str(), 
                                                 join({"", std::get<0>(variables)[0][0], std::get<0>(variables)[1][0]}, ";").c_str(),
                                                 edges[0].size() - 1, edges[0].data(), edges[1].size() - 1, edges[1].data()) );
   }
-  if (edges.size() == 3) {
+  if (reroll and nvar == 3) {
     result.emplace_back( std::make_unique<TH3D>((vars + ftag).c_str(),
                                                 join({"",
                                                       std::get<0>(variables)[0][0],
@@ -64,9 +65,9 @@ std::vector<std::unique_ptr<TH1>> array_to_root(const std::tuple<
                                                 edges[2].size() - 1, edges[2].data()) );
   }
 
-  static std::vector<int> idx(edges.size(), -1);
-  if (edges.size() > idx.capacity())
-    idx.reserve(edges.size());
+  static std::vector<int> idx(nvar, -1);
+  if (nvar > idx.capacity())
+    idx.reserve(nvar);
 
   for (int ibin = 0; ibin < nbin; ++ibin) {
     if (std::isnan(hist(ibin, 0)) or std::isnan(hist(ibin, 1)) or hist(ibin, 1) < 0.)
@@ -75,15 +76,15 @@ std::vector<std::unique_ptr<TH1>> array_to_root(const std::tuple<
     result[0]->SetBinContent(ibin + 1, hist(ibin, 0));
     result[0]->SetBinError(ibin + 1, std::sqrt(hist(ibin, 1)));
 
-    if (edges.size() == 2 or edges.size() == 3) {
-      for (int iv = 0; iv < edges.size(); ++iv)
+    if (reroll and (nvar == 2 or nvar == 3)) {
+      for (int iv = 0; iv < nvar; ++iv)
         idx[iv] = index_1n(ibin, iv, edges);
 
-      if (edges.size() == 2) {
+      if (nvar == 2) {
         result[1]->SetBinContent(idx[0] + 1, idx[1] + 1, hist(ibin, 0));
         result[1]->SetBinError(idx[0] + 1, idx[1] + 1, std::sqrt(hist(ibin, 1)));
       }
-      else if (edges.size() == 3) {
+      else if (nvar == 3) {
         result[1]->SetBinContent(idx[0] + 1, idx[1] + 1, idx[2] + 1, hist(ibin, 0));
         result[1]->SetBinError(idx[0] + 1, idx[1] + 1, idx[2] + 1, std::sqrt(hist(ibin, 1)));
       }
