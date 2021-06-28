@@ -26,6 +26,7 @@ auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std:
     return bandwidths;
   }
 
+  const int nbin = count_nbin(edges);
   const std::vector<double> grid = {0.1, 0.2, 0.5, 0.7, 1.}; 
   std::vector<std::vector<double>> dummy(edges.size(), std::vector<double>(grid.size() + 1, 0.));
 
@@ -38,7 +39,8 @@ auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std:
     for (int iv = 0; iv < edges.size(); ++iv)
       bandwidth[iv] = std::ceil(grid[index_1n(ibw, iv, dummy)] * (edges[iv].size() - 1));
 
-    if (std::all_of(std::begin(bandwidth), std::end(bandwidth), [] (auto &bw) { return bw > 1; }))
+    if (std::all_of(std::begin(bandwidth), std::end(bandwidth), [] (auto &bw) { return bw > 1; }) and
+        std::accumulate(std::begin(bandwidth), std::end(bandwidth), 1, std::multiplies<>()) > 0.005 * nbin)
       bandwidths.emplace_back(std::move(bandwidth));
   }
   bandwidths.shrink_to_fit();
@@ -422,8 +424,8 @@ void load_snapshot(const std::tuple<
     }
   }
 
-  auto kh = ss->FindKey(((oneside) ? bw + systematic + "_chi2" : bw + systematic + "_up_chi2").c_str());
-  auto kl = (oneside) ? nullptr : ss->FindKey((bw + systematic + "_down_chi2").c_str());
+  auto kh = ss->FindKey(((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str());
+  auto kl = (oneside) ? nullptr : ss->FindKey((bw + systematic + "_down_cv_chi2").c_str());
   auto kp = ss->FindKey((std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str());
   if (kh == nullptr or (not oneside and kl == nullptr) or kp == nullptr) {
     std::cout << "Snapshot file not compatible with the current smoothing routine. Either the required histograms aren't present "
@@ -734,7 +736,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
 
   const std::string updir = (oneside) ? "" : "_up";
 
-  f_concatenate(result, array_to_root(variables_n, "nominal_source_template", coarse_edges, coarse_n));
+  f_concatenate(result, array_to_root(variables_n, "nominal_source_template", coarse_edges, coarse_n, true));
   f_concatenate(result, array_to_root(variables_n, systematic + updir + "_source_template", coarse_edges, coarse_h));
   if (not oneside)
     f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_template", coarse_edges, coarse_l));
@@ -746,7 +748,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
     f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_deviation", coarse_edges, crdev_l));
 
   if (dosmooth) {
-    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_template", fine_edges, fine_n));
+    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_template", fine_edges, fine_n, true));
     f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_source_template", fine_edges, fine_h));
     if (not oneside)
       f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_template", fine_edges, fine_l));
@@ -790,15 +792,22 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
       for (int iv = 0; iv < nvar; ++iv)
         f_concatenate(result, array_to_root(bwvars, std::get<0>(variables_n)[iv][0], bwedges, bandwidth_to_hist(bandwidths, fine_edges, iv)));
 
-      f_concatenate(result, array_to_root(bwvars, systematic + updir + "_chi2", bwedges, vector_to_hist(chi2s_h)));
+      f_concatenate(result, array_to_root(bwvars, systematic + updir + "_cv_chi2", bwedges, vector_to_hist(chi2s_h)));
       if (not oneside)
-        f_concatenate(result, array_to_root(bwvars, systematic + "_down_chi2", bwedges, vector_to_hist(chi2s_l)));
+        f_concatenate(result, array_to_root(bwvars, systematic + "_down_cv_chi2", bwedges, vector_to_hist(chi2s_l)));
 
       const auto nprv = std::make_tuple(std::vector<std::vector<std::string>>{{"npartition" + to_str(npartition) + "_times_nrepeatcv"}},
                                         std::vector<std::vector<double>>{ {0., 1.} },
                                         std::vector<std::vector<double>>{}, std::string{});
       f_concatenate(result, array_to_root(nprv, "", std::get<1>(nprv), vector_to_hist({double(npart)})));
     }
+
+    const auto chi2v = std::make_tuple(std::vector<std::vector<std::string>>{{"full_smoothing"}},
+                                       std::vector<std::vector<double>>{ {0., 1.} },
+                                       std::vector<std::vector<double>>{}, std::string{});
+    f_concatenate(result, array_to_root(chi2v, systematic + updir + "_chi2", std::get<1>(chi2v), vector_to_hist({chi2_h})));
+    if (not oneside)
+      f_concatenate(result, array_to_root(chi2v, systematic + "_down_chi2", std::get<1>(chi2v), vector_to_hist({chi2_l})));
   }
 
   return result;
