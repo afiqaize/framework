@@ -183,11 +183,19 @@ void Framework::Dataset<TChain>::evaluate(int index /*= 0*/)
   }
 
   if (index == 0) {
-    for (const auto &file : v_file)
-      tree_ptr->Add(file.c_str());
+    for (const auto &file : v_file) {
+      if (std::filesystem::is_regular_file(file))
+        tree_ptr->Add(file.c_str());
+      else
+        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
+    }
   }
-  else if (index == -1)
-    tree_ptr->Add(v_file.back().c_str());
+  else if (index == -1) {
+    if (std::filesystem::is_regular_file(v_file.back()))
+      tree_ptr->Add(v_file.back().c_str());
+    else
+      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
+  }
 }
 
 
@@ -209,6 +217,9 @@ void Framework::Dataset<TTree>::evaluate(int index /*= 0*/)
 
   if (index == 0) {
     for (const auto &file : v_file) {
+      if (not std::filesystem::is_regular_file(file))
+        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
+
       if (!flag_struct) {
         tree_ptr->ReadFile(file.c_str(), tree_struct.c_str(), tree_delim);
         flag_struct = true;
@@ -218,6 +229,9 @@ void Framework::Dataset<TTree>::evaluate(int index /*= 0*/)
     }
   }
   else if (index == -1) {
+    if (not std::filesystem::is_regular_file(v_file.back()))
+      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
+
     if (!flag_struct) {
       tree_ptr->ReadFile(v_file.back().c_str(), tree_struct.c_str(), tree_delim);
       flag_struct = true;
