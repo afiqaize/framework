@@ -581,7 +581,7 @@ void make_histogram_set(const std::vector<std::string> &files,
                                       std::vector<std::vector<double>>{ make_interval(0., double(std::get<1>(variables_bins).size()), 1.) },
                                       std::vector<std::vector<double>>{}, std::string{});
 
-  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0]), array_to_root(nbvars, "nbin", std::get<1>(nbvars), nbin_hist(variables_bins)));
+  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0], true), array_to_root(nbvars, "nbin", std::get<1>(nbvars), nbin_hist(variables_bins)));
 }
 
 #endif
