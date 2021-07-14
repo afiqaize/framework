@@ -484,6 +484,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
                            bool binomial,
                            int npartition,
                            int nrepeatcv,
+                           char restype,
                            const std::string &snapshot,
                            const std::vector<double> &fixed_bandwidth = {})
 {
@@ -736,52 +737,52 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
 
   const std::string updir = (oneside) ? "" : "_up";
 
-  f_concatenate(result, array_to_root(variables_n, "nominal_source_template", coarse_edges, coarse_n, true));
-  f_concatenate(result, array_to_root(variables_n, systematic + updir + "_source_template", coarse_edges, coarse_h));
+  f_concatenate(result, array_to_root(variables_n, "nominal_source_template", coarse_edges, coarse_n, restype));
+  f_concatenate(result, array_to_root(variables_n, systematic + updir + "_source_template", coarse_edges, coarse_h, restype));
   if (not oneside)
-    f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_template", coarse_edges, coarse_l));
+    f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_template", coarse_edges, coarse_l, restype));
 
   const auto [crdev_h, crdev_l] = f_make_rdev(coarse_n, coarse_h, coarse_l, false);
-  f_concatenate(result, array_to_root(variables_n, "nominal_source_deviation", coarse_edges, relative_deviation(coarse_n, coarse_n)));
-  f_concatenate(result, array_to_root(variables_n, systematic + updir + "_source_deviation", coarse_edges, crdev_h));
+  f_concatenate(result, array_to_root(variables_n, "nominal_source_deviation", coarse_edges, relative_deviation(coarse_n, coarse_n), restype));
+  f_concatenate(result, array_to_root(variables_n, systematic + updir + "_source_deviation", coarse_edges, crdev_h, restype));
   if (not oneside)
-    f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_deviation", coarse_edges, crdev_l));
+    f_concatenate(result, array_to_root(variables_n, systematic + "_down_source_deviation", coarse_edges, crdev_l, restype));
 
   if (dosmooth) {
-    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_template", fine_edges, fine_n, true));
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_source_template", fine_edges, fine_h));
+    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_template", fine_edges, fine_n, restype));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_source_template", fine_edges, fine_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_template", fine_edges, fine_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_template", fine_edges, fine_l, restype));
 
     if (symmetrize)
       std::tie(rdev_h, rdev_l) = f_make_rdev(fine_n, fine_h, fine_l, false);
-    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_deviation", fine_edges, relative_deviation(fine_n, fine_n)));
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_source_deviation", fine_edges, rdev_h));
+    f_concatenate(result, array_to_root(variables_n, "nominal_fine_source_deviation", fine_edges, relative_deviation(fine_n, fine_n), restype));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_source_deviation", fine_edges, rdev_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_deviation", fine_edges, rdev_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_source_deviation", fine_edges, rdev_l, restype));
 
     const auto fine_smooth_h = apply_deviation(fine_n, smooth_rdev_h);
     const auto fine_smooth_l = (oneside) ? Arrayhist(fine_smooth_h.size()) : apply_deviation(fine_n, smooth_rdev_l);
 
     const auto coarse_smooth_h = rebin(fine_smooth_h, fine_edges, coarse_edges);
     const auto coarse_smooth_l = (oneside) ? Arrayhist(coarse_smooth_h.size()) : rebin(fine_smooth_l, fine_edges, coarse_edges);
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_smooth_template", coarse_edges, coarse_smooth_h));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_smooth_template", coarse_edges, coarse_smooth_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_template", coarse_edges, coarse_smooth_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_template", coarse_edges, coarse_smooth_l, restype));
 
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_smooth_template", fine_edges, fine_smooth_h));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_smooth_template", fine_edges, fine_smooth_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_template", fine_edges, fine_smooth_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_template", fine_edges, fine_smooth_l, restype));
 
     const auto smooth_crdev_h = divide(sum(coarse_smooth_h, coarse_n, 1., -1., false, true), coarse_n, false, true);
     const auto smooth_crdev_l = (oneside) ? Arrayhist(smooth_crdev_h.size()) : divide(sum(coarse_smooth_l, coarse_n, 1., -1., false, true), coarse_n, false, true);
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_smooth_deviation", coarse_edges, smooth_crdev_h));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_smooth_deviation", coarse_edges, smooth_crdev_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_deviation", coarse_edges, smooth_crdev_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_smooth_deviation", coarse_edges, smooth_crdev_l, restype));
 
-    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_smooth_deviation", fine_edges, smooth_rdev_h));
+    f_concatenate(result, array_to_root(variables_n, systematic + updir + "_fine_smooth_deviation", fine_edges, smooth_rdev_h, restype));
     if (not oneside)
-      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_deviation", fine_edges, smooth_rdev_l));
+      f_concatenate(result, array_to_root(variables_n, systematic + "_down_fine_smooth_deviation", fine_edges, smooth_rdev_l, restype));
 
     if (runcv) {
       const auto bwvars = std::make_tuple(std::vector<std::vector<std::string>>{{"bandwidth"}},
@@ -827,16 +828,22 @@ void smooth_templates(const std::vector<std::string> &files,
                       bool binomial,
                       int npartition,
                       int nrepeatcv,
+                      char restype,
                       const std::string &snapshot,
                       const std::vector<double> &fixed_bandwidth,
                       const std::string &output)
 {
+  if (systematic == "")
+    throw std::runtime_error( "smooth_templates() :: --systematic argument must be non-empty in --mode systematic or smooth." );
+
   if (type == "weight") {
     if (not oneside and weight.size() != 3)
-      throw std::runtime_error( "smooth_templates() :: number of weight expressions has to be 3 if --type is weight. Aborting." );
+      throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 3 if --type is weight. Aborting." );
     else if (oneside and weight.size() != 2)
-      throw std::runtime_error( "smooth_templates() :: number of weight expressions has to be 2 if --type is weight and --one-side option is used. Aborting." );
+      throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 2 if --type is weight and --one-side is used. Aborting." );
   }
+  else if (weight.size() != 1)
+    throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 1 if --type is tree. Aborting." );
 
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
@@ -872,7 +879,7 @@ void smooth_templates(const std::vector<std::string> &files,
   }
 
   auto result = smooth_templates_impl(data_n, data_h, data_l, coll_n, coll_h, coll_l, variables_n, variables_h, variables_l, systematic,
-                                      dosmooth, oneside, symmetrize, binomial, npartition, nrepeatcv, snapshot, fixed_bandwidth);
+                                      dosmooth, oneside, symmetrize, binomial, npartition, nrepeatcv, restype, snapshot, fixed_bandwidth);
 
   const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"}},
                                       std::vector<std::vector<double>>{ make_interval(0., double(std::get<1>(variables_n).size()), 1.) },
