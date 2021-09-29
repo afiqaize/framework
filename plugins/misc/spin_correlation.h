@@ -100,6 +100,12 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
     m_spin_corr.emplace_back("cnk", -9999.);
     m_spin_corr.emplace_back("ckn", -9999.);
 
+    m_spin_corr.emplace_back("ckj", -9999.);
+    m_spin_corr.emplace_back("crq", -9999.);
+
+    m_spin_corr.emplace_back("crj", -9999.);
+    m_spin_corr.emplace_back("cjr", -9999.);
+
     m_spin_corr.emplace_back("cPrk", -9999.);
     m_spin_corr.emplace_back("cMrk", -9999.);
 
@@ -108,6 +114,9 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
 
     m_spin_corr.emplace_back("cPnk", -9999.);
     m_spin_corr.emplace_back("cMnk", -9999.);
+
+    m_spin_corr.emplace_back("cPrj", -9999.);
+    m_spin_corr.emplace_back("cMrj", -9999.);
 
     m_spin_corr.emplace_back("cxx", -9999.);
     m_spin_corr.emplace_back("cyy", -9999.);
@@ -377,6 +386,12 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
   static const int icnk = index_with_key(m_spin_corr, "cnk");
   static const int ickn = index_with_key(m_spin_corr, "ckn");
 
+  static const int ickj = index_with_key(m_spin_corr, "ckj");
+  static const int icrq = index_with_key(m_spin_corr, "crq");
+
+  static const int icrj = index_with_key(m_spin_corr, "crj");
+  static const int icjr = index_with_key(m_spin_corr, "cjr");
+
   static const int icxx = index_with_key(m_spin_corr, "cxx");
   static const int icyy = index_with_key(m_spin_corr, "cyy");
   static const int iczz = index_with_key(m_spin_corr, "czz");
@@ -399,6 +414,12 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
 
   m_spin_corr[icnr].second = m_spin_corr[ib1n].second * m_spin_corr[ib2r].second;
   m_spin_corr[icrn].second = m_spin_corr[ib1r].second * m_spin_corr[ib2n].second;
+
+  m_spin_corr[ickj].second = m_spin_corr[ib1k].second * m_spin_corr[ib2j].second;
+  m_spin_corr[icrq].second = m_spin_corr[ib1r].second * m_spin_corr[ib2q].second;
+
+  m_spin_corr[icrj].second = m_spin_corr[ib1r].second * m_spin_corr[ib2j].second;
+  m_spin_corr[icjr].second = m_spin_corr[ib1j].second * m_spin_corr[ib2r].second;
 
   m_spin_corr[icnk].second = m_spin_corr[ib1n].second * m_spin_corr[ib2k].second;
   m_spin_corr[ickn].second = m_spin_corr[ib1k].second * m_spin_corr[ib2n].second;
@@ -426,6 +447,9 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
   static const int icPnk = index_with_key(m_spin_corr, "cPnk");
   static const int icMnk = index_with_key(m_spin_corr, "cMnk");
 
+  static const int icPrj = index_with_key(m_spin_corr, "cPrj");
+  static const int icMrj = index_with_key(m_spin_corr, "cMrj");
+
   static const int icPyx = index_with_key(m_spin_corr, "cPyx");
   static const int icMyx = index_with_key(m_spin_corr, "cMyx");
 
@@ -443,6 +467,9 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
 
   m_spin_corr[icPnk].second = m_spin_corr[icnk].second + m_spin_corr[ickn].second;
   m_spin_corr[icMnk].second = m_spin_corr[icnk].second - m_spin_corr[ickn].second;
+
+  m_spin_corr[icPrj].second = m_spin_corr[icrj].second + m_spin_corr[icjr].second;
+  m_spin_corr[icMrj].second = m_spin_corr[icrj].second - m_spin_corr[icjr].second;
 
   m_spin_corr[icPyx].second = m_spin_corr[icyx].second + m_spin_corr[icxy].second;
   m_spin_corr[icMyx].second = m_spin_corr[icyx].second - m_spin_corr[icxy].second;
