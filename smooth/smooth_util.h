@@ -40,7 +40,7 @@ auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std:
       bandwidth[iv] = std::ceil(grid[index_1n(ibw, iv, dummy)] * (edges[iv].size() - 1));
 
     if (std::all_of(std::begin(bandwidth), std::end(bandwidth), [] (auto &bw) { return bw > 1; }) and
-        std::accumulate(std::begin(bandwidth), std::end(bandwidth), 1, std::multiplies<>()) > 0.005 * nbin)
+        std::accumulate(std::begin(bandwidth), std::end(bandwidth), 1, std::multiplies<>()) > 0.01 * nbin)
       bandwidths.emplace_back(std::move(bandwidth));
   }
   bandwidths.shrink_to_fit();
