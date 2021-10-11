@@ -9,10 +9,10 @@
 #include "Collection.h"
 
 #include <cmath>
-#include "misc/string_io.h"
-#include "misc/container_util.h"
-#include "misc/function_util.h"
-#include "misc/rng_util.h"
+#include "string_io.h"
+#include "container_util.h"
+#include "function_util.h"
+#include "rng_util.h"
 
 #include "array_histogram.h"
 #include "output_util.h"

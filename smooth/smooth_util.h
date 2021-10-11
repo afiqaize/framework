@@ -9,7 +9,7 @@
 
 #include "TKey.h"
 
-#include "make_histogram.h"
+#include "misc/make_histogram.h"
 #include "fit_util.h"
 
 auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std::vector<double> &fixed_bandwidth = {})
