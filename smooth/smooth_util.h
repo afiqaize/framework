@@ -452,6 +452,19 @@ void load_snapshot(const std::tuple<
 
 
 
+auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const std::vector<std::vector<double>> &edges, int idim)
+{
+  Arrayhist hist(bandwidths.size());
+  for (int ibw = 0; ibw < bandwidths.size(); ++ibw) {
+    hist(ibw, 0) = double(bandwidths[ibw][idim]) / (edges[idim].size() - 1);
+    hist(ibw, 1) = 0.;
+  }
+
+  return hist;
+}
+
+
+
 /// perform the actual smoothing
 /// also cross-validation over pre-determined set of bandwidths if there are more than 1 partitions
 /// bandwidths is when one wants to run with a fixed bandwidth choice
