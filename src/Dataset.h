@@ -9,7 +9,8 @@
 #include "TTree.h"
 #include "TChain.h"
 
-#include <iostream>
+#include "misc/string_io.h"
+
 #include <filesystem>
 
 // accepted template types are:
@@ -26,8 +27,12 @@ namespace Framework {
             const std::string &tree_struct_ = "", char tree_delim_ = ' ', 
             const std::vector<std::string> &v_file_ = {});
 
+    Dataset(Dataset &&dat);
+
     /// destructor
     ~Dataset();
+
+    Dataset& operator=(Dataset &&dat);
 
     /// setter methods
     void set_tree(const std::string &tree_name_);
@@ -57,11 +62,11 @@ namespace Framework {
     /// TODO include methods that sets weight based on tree content
     bool add_weight(const std::string &wgt_name, double wgt);
 
-    /// split a dataset into two parts
-    /// also renames itself to indicate uniqueness
-    /// splitting is file based, so returned dataset will be empty if <= 1 file is held
-    /// both datasets will keep the same set of weights
-    Dataset split();
+    /// split a dataset into npartition parts, and return the zero-based ipartition-th part
+    /// splitting is file based
+    /// returned dataset will keep the same set of weights
+    /// original dataset is left unaltered
+    Dataset split(int npartition = 2, int ipartition = 0);
 
     /// getter methods
     long long current_entry(long long entry) const;
@@ -69,10 +74,6 @@ namespace Framework {
     const std::unique_ptr<Tree>& tree() const;
 
     double get_weight(const std::string &wgt_name) const;
-
-    /// add the files to the Tree and evaluate entries
-    /// argument index can be 0 for evaluate everything, or -1 for evaluate only the last v_file element
-    void evaluate(int index = 0);
 
     /// take all the Collections to associate to the tree and allocate resources
     template <typename ...Collections>
@@ -95,6 +96,10 @@ namespace Framework {
     std::string name;
 
   private:
+    /// add the files to the Tree and evaluate entries
+    /// argument index can be 0 for evaluate everything, or -1 for evaluate only the last v_file element
+    void evaluate(int index = 0);
+
     /// name of the tree
     std::string tree_name;
 
