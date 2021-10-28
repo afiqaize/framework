@@ -26,7 +26,7 @@ public:
   }
 
   // copy assign, commented because not needed, but kept for reference
-  Arrayhist& operator=(const Arrayhist& ah) {
+  Arrayhist& operator=(const Arrayhist &ah) {
     nbin = ah.nbin;
     for (int ibin = 0; ibin < nbin; ++ibin) {
       hist[ibin] = ah(ibin, 0);
@@ -36,7 +36,7 @@ public:
     return *this;
   }*/
 
-  Arrayhist& operator=(Arrayhist&& ah) {
+  Arrayhist& operator=(Arrayhist &&ah) {
     nbin = ah.nbin;
     std::swap(hist, ah.hist);
     return *this;
