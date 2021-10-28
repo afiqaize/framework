@@ -14,9 +14,22 @@ Framework::Dataset<Tree>::Dataset(const std::string &name_, const std::string &t
 {
   tree_ptr = nullptr;
   v_weight = {};
+}
 
-  if (!v_file.empty())
-    evaluate();
+
+
+template <typename Tree>
+Framework::Dataset<Tree>::Dataset(Framework::Dataset<Tree> &&dat)
+{
+  std::swap(name, dat.name);
+  std::swap(tree_name, dat.tree_name);
+  std::swap(tree_struct, dat.tree_struct);
+  tree_delim = dat.tree_delim;
+  std::swap(v_file, dat.v_file);
+  std::swap(tree_ptr, dat.tree_ptr);
+  std::swap(allocator, dat.allocator);
+  std::swap(analyzer, dat.analyzer);
+  std::swap(v_weight, dat.v_weight);
 }
 
 
@@ -25,6 +38,24 @@ template <typename Tree>
 Framework::Dataset<Tree>::~Dataset()
 {
   reset();
+}
+
+
+
+template <typename Tree>
+Framework::Dataset<Tree>& Framework::Dataset<Tree>::operator=(Framework::Dataset<Tree> &&dat)
+{
+  std::swap(name, dat.name);
+  std::swap(tree_name, dat.tree_name);
+  std::swap(tree_struct, dat.tree_struct);
+  tree_delim = dat.tree_delim;
+  std::swap(v_file, dat.v_file);
+  std::swap(tree_ptr, dat.tree_ptr);
+  std::swap(allocator, dat.allocator);
+  std::swap(analyzer, dat.analyzer);
+  std::swap(v_weight, dat.v_weight);
+
+  return *this;
 }
 
 
@@ -72,8 +103,6 @@ void Framework::Dataset<Tree>::set_files(const std::vector<std::string> &v_file_
   }
   else 
     v_file = v_file_;
-
-  evaluate();
 }
 
 
@@ -86,7 +115,6 @@ bool Framework::Dataset<Tree>::add_file(const std::string &file)
     return false;
 
   v_file.emplace_back(file);
-  evaluate(-1);
   return true;
 }
 
@@ -114,26 +142,22 @@ bool Framework::Dataset<Tree>::add_weight(const std::string &wgt_name, double wg
 
 
 template <typename Tree>
-Framework::Dataset<Tree> Framework::Dataset<Tree>::split()
+Framework::Dataset<Tree> Framework::Dataset<Tree>::split(int npartition /*= 2*/, int ipartition /*= 0*/)
 {
-  std::vector<std::string> vf1, vf2;
-  const int half = (v_file.size() % 2 == 1) ? int(v_file.size() / 2) + 1 : v_file.size() / 2;
+  if (npartition < 0 or npartition > v_file.size())
+    npartition = 2;
 
-  for (int iF = 0; iF < v_file.size(); ++iF) {
-    if (iF <= half)
-      vf1.emplace_back(v_file[iF]);
-    else
-      vf2.emplace_back(v_file[iF]);
-  }
+  if (ipartition < 0 or ipartition >= npartition)
+    ipartition = 0;
 
-  auto dname = name;
-  auto vw = v_weight;
-  this->name = dname + "_1";
-  this->set_files(vf1, true);
-  this->v_weight = vw;
+  const int nfile = (v_file.size() % npartition) ? int(v_file.size() / npartition) + 1 : v_file.size() / npartition;
+  std::vector<std::string> vf;
 
-  auto dat = Dataset(dname + "_2", tree_name, tree_struct, tree_delim, vf2);
-  dat->v_weight = vw;
+  for (int iF = ipartition * nfile, iC = 0; iF < v_file.size() and iC < nfile; ++iF, ++iC)
+    vf.emplace_back(v_file[iF]);
+
+  auto dat = Dataset(name + "_n" + to_str(npartition) + "_i" + to_str(ipartition), tree_name, tree_struct, tree_delim, vf);
+  dat.v_weight = v_weight;
 
   return dat;
 }
@@ -173,81 +197,12 @@ double Framework::Dataset<Tree>::get_weight(const std::string &wgt_name) const
 
 
 
-template <>
-void Framework::Dataset<TChain>::evaluate(int index /*= 0*/)
-{
-  if (tree_ptr == nullptr) {
-    tree_ptr = std::make_unique<TChain>(tree_name.c_str());
-    //tree_ptr->SetImplicitMT(false);
-    tree_ptr->SetBranchStatus("*", 0);
-  }
-
-  if (index == 0) {
-    for (const auto &file : v_file) {
-      if (std::filesystem::is_regular_file(file))
-        tree_ptr->Add(file.c_str());
-      else
-        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
-    }
-  }
-  else if (index == -1) {
-    if (std::filesystem::is_regular_file(v_file.back()))
-      tree_ptr->Add(v_file.back().c_str());
-    else
-      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
-  }
-}
-
-
-
-template <>
-void Framework::Dataset<TTree>::evaluate(int index /*= 0*/)
-{
-  static bool flag_struct = false;
-  if (!flag_struct and tree_struct == "") {
-    // TODO something about logging the error
-    return;
-  }
-
-  if (tree_ptr == nullptr) {
-    tree_ptr = std::make_unique<TTree>(tree_name.c_str(), "");
-    //tree_ptr->SetImplicitMT(false);
-    tree_ptr->SetBranchStatus("*", 0);
-  }
-
-  if (index == 0) {
-    for (const auto &file : v_file) {
-      if (not std::filesystem::is_regular_file(file))
-        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
-
-      if (!flag_struct) {
-        tree_ptr->ReadFile(file.c_str(), tree_struct.c_str(), tree_delim);
-        flag_struct = true;
-      }
-      else
-        tree_ptr->ReadFile(file.c_str());
-    }
-  }
-  else if (index == -1) {
-    if (not std::filesystem::is_regular_file(v_file.back()))
-      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
-
-    if (!flag_struct) {
-      tree_ptr->ReadFile(v_file.back().c_str(), tree_struct.c_str(), tree_delim);
-      flag_struct = true;
-    }
-    else
-      tree_ptr->ReadFile(v_file.back().c_str());
-  }
-}
-
-
-
 template <typename Tree>
 template <typename ...Collections>
 void Framework::Dataset<Tree>::associate(Collections &...colls)
 {
   static_assert(sizeof...(colls) > 0, "ERROR: Dataset::allocate makes no sense when called without arguments!!");
+  evaluate();
 
   if (tree_ptr == nullptr)
     throw std::runtime_error( "ERROR: Dataset::associate should not be called before assigning the files to be analyzed!!" );
@@ -310,9 +265,12 @@ void Framework::Dataset<Tree>::analyze(long long total /*= -1LL*/, long long ski
 template <typename Tree>
 void Framework::Dataset<Tree>::reset()
 {
-  tree_ptr->ResetBranchAddresses();
-  tree_ptr->Reset();
-  tree_ptr.reset();
+  if (tree_ptr != nullptr) {
+    tree_ptr->ResetBranchAddresses();
+    tree_ptr->Reset();
+    tree_ptr.reset();
+  }
+
   allocator = Allocator{};
   analyzer = nullptr;
 
@@ -321,4 +279,80 @@ void Framework::Dataset<Tree>::reset()
 
   v_weight.clear();
   v_weight.shrink_to_fit();
+}
+
+
+
+template <>
+void Framework::Dataset<TChain>::evaluate(int index /*= 0*/)
+{
+  if (v_file.empty())
+    return;
+
+  if (tree_ptr == nullptr) {
+    tree_ptr = std::make_unique<TChain>(tree_name.c_str());
+    //tree_ptr->SetImplicitMT(false);
+    tree_ptr->SetBranchStatus("*", 0);
+  }
+
+  if (index == 0) {
+    for (const auto &file : v_file) {
+      if (std::filesystem::is_regular_file(file))
+        tree_ptr->Add(file.c_str());
+      else
+        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
+    }
+  }
+  else if (index == -1) {
+    if (std::filesystem::is_regular_file(v_file.back()))
+      tree_ptr->Add(v_file.back().c_str());
+    else
+      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
+  }
+}
+
+
+
+template <>
+void Framework::Dataset<TTree>::evaluate(int index /*= 0*/)
+{
+  static bool flag_struct = false;
+  if (!flag_struct and tree_struct == "") {
+    // TODO something about logging the error
+    return;
+  }
+
+  if (v_file.empty())
+    return;
+
+  if (tree_ptr == nullptr) {
+    tree_ptr = std::make_unique<TTree>(tree_name.c_str(), "");
+    //tree_ptr->SetImplicitMT(false);
+    tree_ptr->SetBranchStatus("*", 0);
+  }
+
+  if (index == 0) {
+    for (const auto &file : v_file) {
+      if (not std::filesystem::is_regular_file(file))
+        throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
+
+      if (!flag_struct) {
+        tree_ptr->ReadFile(file.c_str(), tree_struct.c_str(), tree_delim);
+        flag_struct = true;
+      }
+      else
+        tree_ptr->ReadFile(file.c_str());
+    }
+  }
+  else if (index == -1) {
+    if (not std::filesystem::is_regular_file(v_file.back()))
+      throw std::runtime_error( "ERROR: Dataset::evaluate: file " + v_file.back() + " is not accessible by the program!!" );
+
+    if (!flag_struct) {
+      tree_ptr->ReadFile(v_file.back().c_str(), tree_struct.c_str(), tree_delim);
+      flag_struct = true;
+    }
+    else
+      tree_ptr->ReadFile(v_file.back().c_str());
+  }
 }
