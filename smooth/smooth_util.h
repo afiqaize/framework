@@ -424,18 +424,14 @@ void load_snapshot(const std::tuple<
     }
   }
 
-  auto kh = ss->FindKey(((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str());
-  auto kl = (oneside) ? nullptr : ss->FindKey((bw + systematic + "_down_cv_chi2").c_str());
-  auto kp = ss->FindKey((std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str());
-  if (kh == nullptr or (not oneside and kl == nullptr) or kp == nullptr) {
+  auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( ((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str() ));
+  auto cl = (oneside) ? nullptr : std::unique_ptr<TH1D>(ss->Get<TH1D>( (bw + systematic + "_down_cv_chi2").c_str() ));
+  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( (std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str() ));
+  if (ch == nullptr or (not oneside and cl == nullptr) or np == nullptr) {
     std::cout << "Snapshot file not compatible with the current smoothing routine. Either the required histograms aren't present "
       "or the number of partitions used isn't the same between the runs." << std::endl;
     return;
   }
-
-  auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( kh->GetName() ));
-  auto cl = (oneside) ? nullptr : std::unique_ptr<TH1D>(ss->Get<TH1D>( kl->GetName() ));
-  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( kp->GetName() ));
 
   if (ch->GetNbinsX() != chi2s_h.size() or (not oneside and cl->GetNbinsX() != chi2s_l.size())) {
     std::cout << "Number of chi2 is not compatible with the current number of tested bandwidth hypotheses." << std::endl;
