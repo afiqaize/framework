@@ -13,8 +13,13 @@
 
 class Arrayhist {
 public:
-  Arrayhist() = delete;
-  Arrayhist(int nbin_) : nbin(nbin_), hist(std::make_unique<double[]>(2 * nbin)) {}
+  Arrayhist() : nbin(0) {}
+  Arrayhist(int nbin_) : nbin(nbin_) {
+    if (nbin > 0)
+      hist = std::make_unique<double[]>(2 * nbin);
+    else
+      nbin = 0;
+  }
   Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
 
   /*/ copy ctor, commented because not needed, but kept for reference
@@ -45,6 +50,14 @@ public:
   double& operator()(int ibin, bool variance) { return hist[ibin + (variance * nbin)]; }
   const double& operator()(int ibin, bool variance) const { return hist[ibin + (variance * nbin)]; }
   int size() const { return nbin; }
+
+  void initialize(int nbin_) {
+    if (nbin != 0)
+      return;
+
+    nbin = nbin_;
+    hist = std::make_unique<double[]>(2 * nbin);
+  }
 
   double sumw() const {
     double sum = 0.;
