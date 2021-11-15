@@ -23,7 +23,7 @@
 #include <stdexcept>
 
 // credit https://stackoverflow.com/questions/34099597/check-if-a-type-is-passed-in-variadic-template-parameter-pack
-template<typename T, typename ...Ts>
+template <typename T, typename ...Ts>
 constexpr bool contained_in = std::disjunction_v<std::is_same<T, Ts>...>;
 
 
@@ -74,8 +74,8 @@ constexpr bool mutual_overlap<T<Ts...>, U<Us...>>
 
 // for std::visit
 // credit https://en.cppreference.com/w/cpp/utility/variant/visit
-template<typename ...Ts> struct overload : Ts... { using Ts::operator()...; };
-template<typename ...Ts> overload(Ts...) -> overload<Ts...>;
+template <typename ...Ts> struct overload : Ts... { using Ts::operator()...; };
+template <typename ...Ts> overload(Ts...) -> overload<Ts...>;
 template <typename> inline constexpr bool always_false_v = false;
 
 
@@ -184,5 +184,10 @@ constexpr auto zip_1n(T1 &t1, const A2<T2, N> &a2)
 {
   return zip_1n_helper(t1, a2, std::make_index_sequence<N>{});
 }
+
+
+
+// literals
+using namespace std::string_literals;
 
 #endif

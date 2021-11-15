@@ -265,22 +265,19 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     auto veb = split(var, ":");
     if (veb.size() != 2) {
       std::cerr << "Variable or expression " << var << " is invalid" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, 
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
     auto ve = split(veb[0], "=");
     if (ve.size() != 1 and ve.size() != 2) {
       std::cerr << "Variable or expression " << veb[0] << " is invalid" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
     strip(ve[0]);
     if (!valid_name(ve[0])) {
       std::cerr << "Invalid variable name " << ve[0] << ". Aborting. Current version considers only names containing " 
         "alphanumeric characters or underscores"<< std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
     if (ve.size() == 2)
@@ -323,8 +320,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     }
     else {
       std::cerr << "Binning information for variable  " << ve[0] << " is invalid. Note that variables with only one bin is not accepted" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
   }
 
