@@ -426,7 +426,7 @@ void load_snapshot(const std::tuple<
 
   auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( ((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str() ));
   auto cl = (oneside) ? nullptr : std::unique_ptr<TH1D>(ss->Get<TH1D>( (bw + systematic + "_down_cv_chi2").c_str() ));
-  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( (std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str() ));
+  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( ("npartition"s + to_str(npartition) + "_times_nrepeatcv").c_str() ));
   if (ch == nullptr or (not oneside and cl == nullptr) or np == nullptr) {
     std::cout << "Snapshot file not compatible with the current smoothing routine. Either the required histograms aren't present "
       "or the number of partitions used isn't the same between the runs." << std::endl;
@@ -864,7 +864,7 @@ void smooth_templates(const std::vector<std::string> &files,
   auto fvary_h = files;
   if (type == "tree") {
     for (auto &file : fvary_h)
-      replace(file, ".root", (oneside) ? std::string("_") + systematic + ".root" : std::string("_") + systematic + "_up.root");
+      replace(file, ".root", (oneside) ? "_"s + systematic + ".root" : "_"s + systematic + "_up.root");
   }
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);

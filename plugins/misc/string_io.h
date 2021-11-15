@@ -142,4 +142,9 @@ auto logger(std::ostream &out)
   };
 }
 
+
+
+// literals
+using namespace std::string_literals;
+
 #endif

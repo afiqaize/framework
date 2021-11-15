@@ -120,7 +120,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     if (leaf == nullptr)
       leaf = tree->FindLeaf(branch_name.c_str());
     if (leaf == nullptr)
-      throw std::runtime_error( std::string("ERROR: Collection::associate: unable to find the requested branch ") + branch_name + "!!!" );
+      throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested branch " + branch_name + "!!!" );
 
     std::string btype = leaf->GetTypeName();
     if (btype == "Int_t")
@@ -142,7 +142,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     else if (btype == "UChar_t")
       Group<Ts...>::template retype<unsigned char>(this->v_data[iB]);
     else
-      throw std::runtime_error( std::string("ERROR: Collection::associate: branch ") + branch_name + "has an unsupported type " + btype
+      throw std::runtime_error( "ERROR: Collection::associate: branch " + branch_name + "has an unsupported type " + btype
                                 + "!!! If it should have been supported, please add it and/or contact the developer.");
 
     tree->SetBranchStatus(branch_name.c_str(), 1);
