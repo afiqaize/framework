@@ -116,6 +116,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
       continue;
 
     // experimenting with automatic type readout
+    // FIXME allow null branch for not found cases, requires adapting associate() and reassociate()
     auto leaf = tree->GetLeaf(branch_name.c_str());
     if (leaf == nullptr)
       leaf = tree->FindLeaf(branch_name.c_str());
