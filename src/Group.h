@@ -154,10 +154,12 @@ namespace Framework {
 
     /// element iterator taking a function and runs the visitor over it
     /// can be type-dependent or otherwise
-    /// other args are the attribute and element count to iterate over
-    /// -1 or anything > v_index.size() to iterate over everything
-    template <typename Function, typename ...Attributes>
-    void iterate(Function function, const idxs &v_idx, Attributes &&...attrs) const;
+    /// second arg can either be the indices or the name of the first attribute to iterate over
+    /// if indices, then iterate over those indices only
+    /// if an attribute name, then iteration is done over all currently held elements
+    /// third args onwards are optional extra attributes to iterate over
+    template <typename Function, typename IdxAttr, typename ...Attributes>
+    void iterate(Function function, const IdxAttr &idxs_or_attr, Attributes &&...attrs) const;
 
     /// filter the elements in the collection by some criteria on a given attribute
     /// custom filter needs a function returning a bool and taking two args of type Number
