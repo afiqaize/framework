@@ -350,22 +350,34 @@ bool Framework::Group<Ts...>::update_indices(const typename Framework::Group<Ts.
 
 
 template <typename ...Ts>
-template <typename Function, typename ...Attributes>
-void Framework::Group<Ts...>::iterate(Function function, const typename Framework::Group<Ts...>::idxs &v_idx, Attributes &&...attrs) const
+template <typename Function, typename IdxAttr, typename ...Attributes>
+void Framework::Group<Ts...>::iterate(Function function, const IdxAttr &idxs_or_attr, Attributes &&...attrs) const
 {
-  static_assert(sizeof...(attrs) > 0, "ERROR: Group::iterate makes no sense without specifying attributes!!");
+  if constexpr (std::is_same_v<IdxAttr, Framework::Group<Ts...>::idxs>) {
+      static_assert(sizeof...(attrs) > 0, "ERROR: Group::iterate makes no sense without specifying attributes!!");
 
-  auto iA = (has_attribute(attrs) and ...);
-  if (!iA)
-    throw std::invalid_argument( "ERROR: Group::iterate: some of the requested attributes are not within the group!!" );
+      auto iA = (has_attribute(attrs) and ...);
+      if (!iA)
+        throw std::invalid_argument( "ERROR: Group::iterate: some of the requested attributes are not within the group!!" );
 
-  if (v_idx.ref != this)
-    throw std::invalid_argument( "ERROR: Group::iterate: requesting iteration over index set of another Group is nonsensical!!" );
+      if (idxs_or_attr.ref != this)
+        throw std::invalid_argument( "ERROR: Group::iterate: requesting iteration over index set of another Group is nonsensical!!" );
 
-  std::visit([&function, &v_idx, this] (const auto &...vec) {
-      for (auto idx : v_idx)
-        function(vec[idx]...);
-    }, v_data[inquire(attrs)]...);
+      std::visit([&function, &idxs_or_attr, this] (const auto &...vec) {
+          for (auto idx : idxs_or_attr)
+            function(vec[idx]...);
+        }, v_data[inquire(attrs)]...);
+    }
+  else {
+    auto iA = ((has_attribute(idxs_or_attr) and has_attribute(attrs)) and ...);
+    if (!iA)
+      throw std::invalid_argument( "ERROR: Group::iterate: some of the requested attributes are not within the group!!" );
+
+    std::visit([&function, this] (const auto &...vec) {
+        for (auto idx : v_index)
+          function(vec[idx]...);
+      }, v_data[inquire(idxs_or_attr)], v_data[inquire(attrs)]...);
+  }
 }
 
 
