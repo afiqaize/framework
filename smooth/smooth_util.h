@@ -115,7 +115,7 @@ std::vector<std::array<double, 2>> fit_plane_index(const std::vector<int> &bins,
                                                    const std::vector<std::vector<double>> &edges, Workspace &wsp)
 {
   const int nvar = edges.size();
-  const auto idx1 = index_1n(ibins[0], iedges);
+  const auto idx1 = index_1n(bins[0], edges);
   const double rdev1 = reldev(bins[0], 0);
 
   // count the number of valid points to be included in the fit

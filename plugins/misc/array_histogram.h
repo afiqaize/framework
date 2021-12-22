@@ -122,7 +122,7 @@ int index_1n(int idx1, int dim, const std::vector<std::vector<double>> &edges)
 std::vector<int> index_1n(int idx1, const std::vector<std::vector<double>> &edges)
 {
   std::vector<int> idxn(edges.size(), -1);
-  for (int iv = 0; iv < nvar; ++iv)
+  for (int iv = 0; iv < edges.size(); ++iv)
     idxn[iv] = index_1n(idx1, iv, edges);
 
   return idxn;
@@ -169,7 +169,7 @@ std::vector<std::vector<double>> edges_of(const std::vector<std::vector<double>>
     for (int ib = 1; ib < centers[iv].size(); ++ib)
       edge[ib] = 0.5 * (centers[iv][ib] + centers[iv][ib - 1]);
 
-    edge.back() = centers[iv].back() + (0.5 * (centers[iv].back() - centers[iv].back()[-1]));
+    edge.back() = centers[iv].back() + (0.5 * (centers[iv].back() - centers[iv][centers[iv].size() - 2]));
     edges.emplace_back(edge);
   }
 
