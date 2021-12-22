@@ -11,6 +11,10 @@ namespace Framework {
     static_assert(std::is_class_v<typename Group::base>, "ERROR: Indices is meant to index a Group!!");
 
   public:
+    using container = std::vector<int>;
+    using iter = container::iterator;
+    using citer = container::const_iterator;
+
     /// constructor
     /// the default indexer is the one used by Group's as dummy
     Indices(const Group *group = nullptr, const std::vector<int> &idxs = {});
@@ -23,17 +27,17 @@ namespace Framework {
 
     const int& operator[](int idx) const;
 
-    std::vector<int>::iterator begin() noexcept;
+    iter begin() noexcept;
 
-    std::vector<int>::const_iterator begin() const noexcept;
+    citer begin() const noexcept;
 
-    std::vector<int>::const_iterator cbegin() const noexcept;
+    citer cbegin() const noexcept;
 
-    std::vector<int>::iterator end() noexcept;
+    iter end() noexcept;
 
-    std::vector<int>::const_iterator end() const noexcept;
+    citer end() const noexcept;
 
-    std::vector<int>::const_iterator cend() const noexcept;
+    citer cend() const noexcept;
 
     int size() const noexcept;
 

@@ -26,6 +26,14 @@ int Framework::Group<Ts...>::n_elements() const noexcept
 
 
 template <typename ...Ts>
+int Framework::Group<Ts...>::size() const noexcept
+{
+  return selected;
+}
+
+
+
+template <typename ...Ts>
 const int& Framework::Group<Ts...>::ref_to_n_elements() const noexcept
 {
   return selected;
@@ -34,7 +42,23 @@ const int& Framework::Group<Ts...>::ref_to_n_elements() const noexcept
 
 
 template <typename ...Ts>
+const int& Framework::Group<Ts...>::ref_to_size() const noexcept
+{
+  return selected;
+}
+
+
+
+template <typename ...Ts>
 int& Framework::Group<Ts...>::mref_to_n_elements() noexcept
+{
+  return selected;
+}
+
+
+
+template <typename ...Ts>
+int& Framework::Group<Ts...>::mref_to_size() noexcept
 {
   return selected;
 }
@@ -219,10 +243,7 @@ template <typename ...Ts>
 template <typename T>
 const T& Framework::Group<Ts...>::get(const std::string &name, int index) const
 {
-  if (index >= selected)
-    throw std::invalid_argument( "ERROR: Group::get: an invalid element index is requested!!" );
-
-  return this->get<T>(name)[v_index[index]];
+  return this->get<T>(name)[index];
 }
 
 
@@ -231,10 +252,7 @@ template <typename ...Ts>
 template <typename T>
 const T& Framework::Group<Ts...>::get(int iattr, int index) const
 {
-  if (index >= selected)
-    throw std::invalid_argument( "ERROR: Group::get: an invalid element index is requested!!" );
-
-  return this->get<T>(iattr)[v_index[index]];
+  return this->get<T>(iattr)[index];
 }
 
 
@@ -256,21 +274,77 @@ const typename Framework::Group<Ts...>::idxs& Framework::Group<Ts...>::ref_to_in
 
 
 template <typename ...Ts>
-int Framework::Group<Ts...>::index(int order) const
+int& Framework::Group<Ts...>::operator[](int idx)
 {
-  int index = (order > -1 and order < selected) ? v_index[order] : -1;
-  return index;
+  return v_index[idx];
 }
 
 
 
 template <typename ...Ts>
-void Framework::Group<Ts...>::update_indices(const typename Framework::Group<Ts...>::idxs &v_idx)
+const int& Framework::Group<Ts...>::operator[](int idx) const
+{
+  return v_index[idx];
+}
+
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::iter Framework::Group<Ts...>::begin() noexcept
+{
+  return v_index.begin();
+}
+
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::begin() const noexcept
+{
+  return v_index.begin();
+}
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::cbegin() const noexcept
+{
+  return v_index.cbegin();
+}
+
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::iter Framework::Group<Ts...>::end() noexcept
+{
+  return v_index.end();
+}
+
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::end() const noexcept
+{
+  return v_index.end();
+}
+
+
+
+template <typename ...Ts>
+typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::cend() const noexcept
+{
+  return v_index.cend();
+}
+
+
+
+template <typename ...Ts>
+bool Framework::Group<Ts...>::update_indices(const typename Framework::Group<Ts...>::idxs &v_idx)
 {
   v_index.clear();
   for (auto idx : v_idx)
     v_index.emplace_back(idx);
   selected = v_index.size();
+
+  return selected > 0;
 }
 
 

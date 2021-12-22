@@ -44,16 +44,24 @@ namespace Framework {
     /// constructor
     Group(const std::string &name_, int counter_);
 
+    /// such that if (Group) is a well-defined expression
+    /// and to no longer need to do if (Group.n_elements)
+    explicit operator bool() const { return selected > 0; };
+
     /// number of currently held elements
+    /// these two are absolutely identical
     int n_elements() const noexcept;
+    int size() const noexcept;
 
     /// ref instead of copy of the above
     const int& ref_to_n_elements() const noexcept;
+    const int& ref_to_size() const noexcept;
 
     /// a mutable ref version
     /// can't be const if it's to be used to write TTree...
     /// might be worth considering to write TTree using copies rather than in-place references?
     int& mref_to_n_elements() noexcept;
+    int& mref_to_size() noexcept;
 
     /// number of currently held attributes
     int n_attributes() const noexcept;
@@ -108,7 +116,7 @@ namespace Framework {
     const std::vector<T>* get_if(int iattr) const noexcept;
 
     /// reference to single element in an attribute - typed version
-    /// equivalent to get<T>(attr)[v_index[index]]
+    /// equivalent to get<T>(attr)[index]
     /// i.e. gives the nth element as per the current Group state accounting for previous update_indices calls 
     template <typename T>
     const T& get(const std::string &name, int index) const;
@@ -123,12 +131,26 @@ namespace Framework {
     /// ref instead of copy of the above
     const idxs& ref_to_indices() const;
 
-    /// and individual index access i.e. v_index[order] with bounds checking
-    int index(int order) const;
+    /// a few index access utilities ala Indices
+    int& operator[](int idx);
+
+    const int& operator[](int idx) const;
+
+    typename idxs::iter begin() noexcept;
+
+    typename idxs::citer begin() const noexcept;
+
+    typename idxs::citer cbegin() const noexcept;
+
+    typename idxs::iter end() noexcept;
+
+    typename idxs::citer end() const noexcept;
+
+    typename idxs::citer cend() const noexcept;
 
     /// update the indices with another set e.g. output of filter/sort
     /// no checking if the indices are actually legit
-    void update_indices(const idxs &v_idx);
+    bool update_indices(const idxs &v_idx);
 
     /// element iterator taking a function and runs the visitor over it
     /// can be type-dependent or otherwise

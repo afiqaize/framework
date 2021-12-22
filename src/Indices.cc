@@ -27,7 +27,7 @@ const int& Framework::Indices<Group>::operator[](int idx) const
 
 
 template <typename Group>
-std::vector<int>::iterator Framework::Indices<Group>::begin() noexcept
+typename Framework::Indices<Group>::iter Framework::Indices<Group>::begin() noexcept
 {
   return v_index.begin();
 }
@@ -35,14 +35,14 @@ std::vector<int>::iterator Framework::Indices<Group>::begin() noexcept
 
 
 template <typename Group>
-std::vector<int>::const_iterator Framework::Indices<Group>::begin() const noexcept
+typename Framework::Indices<Group>::citer Framework::Indices<Group>::begin() const noexcept
 {
   return v_index.begin();
 }
 
 
 template <typename Group>
-std::vector<int>::const_iterator Framework::Indices<Group>::cbegin() const noexcept
+typename Framework::Indices<Group>::citer Framework::Indices<Group>::cbegin() const noexcept
 {
   return v_index.cbegin();
 }
@@ -50,7 +50,7 @@ std::vector<int>::const_iterator Framework::Indices<Group>::cbegin() const noexc
 
 
 template <typename Group>
-std::vector<int>::iterator Framework::Indices<Group>::end() noexcept
+typename Framework::Indices<Group>::iter Framework::Indices<Group>::end() noexcept
 {
   return v_index.end();
 }
@@ -58,7 +58,7 @@ std::vector<int>::iterator Framework::Indices<Group>::end() noexcept
 
 
 template <typename Group>
-std::vector<int>::const_iterator Framework::Indices<Group>::end() const noexcept
+typename Framework::Indices<Group>::citer Framework::Indices<Group>::end() const noexcept
 {
   return v_index.end();
 }
@@ -66,7 +66,7 @@ std::vector<int>::const_iterator Framework::Indices<Group>::end() const noexcept
 
 
 template <typename Group>
-std::vector<int>::const_iterator Framework::Indices<Group>::cend() const noexcept
+typename Framework::Indices<Group>::citer Framework::Indices<Group>::cend() const noexcept
 {
   return v_index.cend();
 }
