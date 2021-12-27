@@ -108,7 +108,7 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
   // grps and grp_inq must be captured by value, since they die outside add_attribute scope
   auto f_apply = [f_calculate, this, iattr = this->v_data.size(), grps, grp_inq] (Attributes &&...attrs) -> void {
     static std::array<int, sizeof...(attrs)> attr_idx;
-    for (int iE = 0; iE < this->counter; ++iE) {
+    for (int iE = 0; iE < std::get<int>(this->counter); ++iE) {
       attr_idx.fill(-1);
       auto single_idx = v_indices[iE];
 
@@ -156,14 +156,14 @@ template <int N, typename ...Ts>
 void Framework::Aggregate<N, Ts...>::populate(long long)
 {
   indexer();
-  this->counter = v_indices.size();
-  this->selected = this->counter;
+  this->counter = int(v_indices.size());
+  this->selected = std::get<int>(this->counter);
 
-  if (this->counter > this->v_index.capacity())
-    this->initialize(this->counter);
+  if (std::get<int>(this->counter) > this->v_index.capacity())
+    this->initialize(std::get<int>(this->counter));
 
   this->v_index.clear();
-  for (int iD = 0; iD < this->counter; ++iD)
+  for (int iD = 0; iD < std::get<int>(this->counter); ++iD)
     this->v_index.emplace_back(iD);
 
   // first run the external attributes

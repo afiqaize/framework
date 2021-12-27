@@ -9,8 +9,8 @@ counter(counter_),
 selected(counter_),
 v_index(this)
 {
-  if (counter > 0) {
-    for (int iC = 0; iC < counter; ++iC)
+  if (std::get<int>(counter) > 0) {
+    for (int iC = 0; iC < std::get<int>(counter); ++iC)
       v_index.emplace_back(iC);
   }
 }
@@ -110,14 +110,20 @@ bool Framework::Group<Ts...>::transform_attribute(const std::string &attr, Funct
     throw std::invalid_argument( "ERROR: Group::transform_attribute: some of the requested attributes are not within the group!!" );
 
   // note on the structure
-  // the three stage function execution is needed because
+  // the multistage function execution is needed because
   // f_loop runs on actual data and produces the result
   // f_apply matches the attribute indices and forward the relevant refs to f_loop
   // all the functions need to be copied instead of referred 
   // due to scoping and/or lambda vs function pointer support
 
   auto f_loop = [function, this] (auto &vec, const auto &...vecs) -> void {
-    for (int iE = 0; iE < this->counter; ++iE)
+    // pack capture not in c++17, so unsure how to do this with std::visit
+    // types are known, so good old get_if works fine
+    auto ic = std::get_if<int>(&this->counter);
+    auto uc = std::get_if<uint>(&this->counter);
+    int current_counter = (ic != nullptr) ? *ic : *uc;
+
+    for (int iE = 0; iE < current_counter; ++iE)
       vec[iE] = function(vecs[iE]...);
   };
 

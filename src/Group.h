@@ -258,7 +258,9 @@ namespace Framework {
     idxs sort_helper(const idxs &v_idx, Compare &compare, int attr) const;
 
     /// element counter before prefiltering
-    int counter;
+    /// a variant purely to suppress root's error message
+    /// counter is still not expected to go beyond int, however
+    std::variant<int, uint> counter;
 
     /// element counter after prefiltering i.e. v_index.size()
     int selected;
