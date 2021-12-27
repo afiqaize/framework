@@ -105,8 +105,22 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
   tree = dataset.tree().get();
 
   if (counter_name != "") {
+    auto leaf = tree->GetLeaf(counter_name.c_str());
+    if (leaf == nullptr)
+      leaf = tree->FindLeaf(counter_name.c_str());
+    if (leaf == nullptr)
+      throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested counter branch " + counter_name + "!!!" );
+
+    const std::string ctype = leaf->GetTypeName();
+    if (ctype == "Int_t")
+      this->counter = 0;
+    else if (ctype == "UInt_t")
+      this->counter = 0u;
+
     tree->SetBranchStatus(counter_name.c_str(), 1);
-    tree->SetBranchAddress(counter_name.c_str(), &(this->counter), &counter_branch);
+    std::visit([this] (auto &counter) {
+        tree->SetBranchAddress(this->counter_name.c_str(), &counter, &this->counter_branch);
+      }, this->counter);
     counter_branch->SetAutoDelete(false);
   }
 
@@ -123,7 +137,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     if (leaf == nullptr)
       throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested branch " + branch_name + "!!!" );
 
-    std::string btype = leaf->GetTypeName();
+    const std::string btype = leaf->GetTypeName();
     if (btype == "Int_t")
       Group<Ts...>::template retype<int>(this->v_data[iB]);
     else if (btype == "UInt_t")
@@ -191,17 +205,19 @@ void Framework::Collection<Ts...>::populate(long long entry)
   // get the number of elements and fill up indices
   if (counter_branch != nullptr) {
     counter_branch->GetEntry(entry);
-    this->selected = this->counter;
-
     this->v_index.clear();
-    for (int iD = 0; iD < this->counter; ++iD)
-      this->v_index.emplace_back(iD);
+
+    std::visit([this] (auto &counter) {
+        this->selected = counter;
+        for (int iD = 0; iD < counter; ++iD)
+          this->v_index.emplace_back(iD);
+      }, this->counter);
   }
   else if (!this->v_attr.empty()) {
     this->v_index.clear();
     this->v_index.emplace_back(0);
     this->counter = 1;
-    this->selected = this->counter;
+    this->selected = std::get<int>(this->counter);
   }
 
   // and then get the data of all the branches
