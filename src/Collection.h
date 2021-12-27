@@ -44,9 +44,11 @@ namespace Framework {
     bool add_attribute(const std::string &attr, const std::string &branch);
 
     /// overload for cases when manually specifying the branch type is desirable
-    /// will be overridden by associate or transform_attribute if a wrong type is given 
+    /// will be overridden by associate or transform_attribute if a wrong type is given
+    /// the last argument is also used to specify a default value to be used when the branch is not present
+    /// necessary when e.g. the default is not the same as default-constructed value of the first type
     template <typename Number>
-    bool add_attribute(const std::string &attr, const std::string &branch, Number);
+    bool add_attribute(const std::string &attr, const std::string &branch, Number number);
 
     /// transform a group of internal attributes into another attribute
     /// the transformation is done element-wise on every element of held data
@@ -70,7 +72,7 @@ namespace Framework {
     void detach();
 
     /// TBranch isn't enough for realloc, so Collection needs to remember its tree
-    TTree* tree;
+    TTree *tree;
 
     /// branch name which gets the counter
     std::string counter_name;
@@ -80,6 +82,9 @@ namespace Framework {
 
     /// attribute branches
     std::vector<std::pair<std::string, TBranch *>> v_branch;
+
+    /// default values in case the branch is not present in the current tree
+    std::vector<std::variant<Ts...>> v_default;
   };
 }
 

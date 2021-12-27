@@ -18,7 +18,7 @@ class boolean {
 
    operator bool() const {return value;}
 
-   /// the following operators are to allow bool* b = &v[0]; (v is a vector here)
+   /// the following operators are to allow bool *b = &v[0]; (v is a vector here)
    bool* operator& () { return &value; }
    const bool* operator& () const { return &value; }
 
