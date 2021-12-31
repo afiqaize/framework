@@ -96,20 +96,25 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
     if (not hltbits[data.path_indices[ipa]])
       continue;
 
-    int pps = data.path_prescales[ipa];
-    int sps = std::numeric_limits<int>::max();
+    const int pps = data.path_prescales[ipa];
+
+    std::vector<int> sps = {};
     for (int ise = 0; ise < data.seed_indices[ipa].size(); ++ise) {
       if (not l1bits[data.seed_indices[ipa][ise]])
         continue;
 
-      if (data.seed_prescales[ipa][ise] < sps)
-        sps = data.seed_prescales[ipa][ise];
+      if (pps * data.seed_prescales[ipa][ise] == 1)
+        return 1.;
+      else
+        sps.emplace_back(data.seed_prescales[ipa][ise]);
     }
 
-    if (pps * sps == 1)
-      return 1.;
-
-    eps.emplace_back(pps * sps);
+    if (std::count(std::begin(sps), std::end(sps), 1) > 0)
+      eps.emplace_back(pps);
+    else {
+      for (const auto &ps : sps)
+        eps.emplace_back(pps * ps);
+    }
   }
 
   return 1. / (1. - std::accumulate(std::begin(eps), std::end(eps), 1., [] (double probability, int prescale) { return probability * (1. - (1. / prescale)); }));
