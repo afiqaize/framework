@@ -175,7 +175,7 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
   std::cout << "Prescaler: prescale table initialized considering the following HLT paths: (" << paths.size() << ")\n";
   for (const auto &path : paths)
     std::cout << path << "\n";
-  std::cout << "\nand the following L1 seeds:\n";
+  std::cout << "\nand the following L1 seeds: (" << seeds.size() << ")\n";
   for (const auto &seed : seeds)
     std::cout << seed << "\n";
   std::cout << "\nEnsure that the bit masks provided to weight() are in this order, with the first path/seed decision at the 2^0 bit." << std::endl;
