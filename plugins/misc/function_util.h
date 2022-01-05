@@ -1,80 +1,18 @@
 // -*- C++ -*-
 // author: afiq anuar
 // short: a listing of free convenience functions for use in the framework
+// note: this is basically an extention of Heap, with no clear distinction on what goes where as of now
 
 #ifndef FWK_FUNCTION_UTIL_H
 #define FWK_FUNCTION_UTIL_H
 
 #include "../src/Heap.h"
 
-#include "TH1.h"
-#include "TH2.h"
-#include "TH3.h"
-
 /// a function that performs a simple copy of the argument
 template <typename T = float>
 T identity(T t)
 {
   return t;
-}
-
-
-
-/// fillers for the histogram class
-template <typename ...Groups>
-auto filler_count(const Groups &...groups)
-{
-  static_assert(sizeof...(groups) > 0 and sizeof...(groups) < 4, "ERROR: filler_count: currently only 1D - 3D histograms are supported!!");
-
-  using Hist = typename std::conditional_t<sizeof...(groups) != 1, typename std::conditional_t<sizeof...(groups) != 2, TH3, TH2>, TH1>;
-
-  return [&groups...] (Hist *hist, const double &weight) {
-    hist->Fill(groups.n_elements()..., weight);
-  };
-}
-
-
-
-template <typename Group, typename ...Attributes>
-auto filler_first_of(const Group &group, Attributes &&...attrs)
-{
-  static_assert(sizeof...(attrs) > 0 and sizeof...(attrs) < 4, "ERROR: filler_first_of: currently only 1D - 3D histograms are supported!!");
-
-  using Hist = typename std::conditional_t<sizeof...(attrs) != 1, typename std::conditional_t<sizeof...(attrs) != 2, TH3, TH2>, TH1>;
-
-  auto iattrs = std::make_tuple( group.inquire(attrs)... );
-  auto filler = [&group] (auto &&...idxs) {
-    return [&group, idxs...] (Hist *hist, const double &weight) {
-      std::visit([&hist, &weight, &indices = group.ref_to_indices()] (const auto &...vec) {
-          if (indices) 
-            hist->Fill(vec[indices[0]]..., weight); 
-        }, group(idxs)...);
-    };
-  };
-
-  return std::apply(filler, iattrs);
-}
-
-
-
-template <typename Group, typename ...Attributes>
-auto filler_all_of(const Group &group, Attributes &&...attrs)
-{
-  static_assert(sizeof...(attrs) > 0 and sizeof...(attrs) < 4, "ERROR: filler_all_of: currently only 1D - 3D histograms are supported!!");
-
-  using Hist = typename std::conditional_t<sizeof...(attrs) != 1, typename std::conditional_t<sizeof...(attrs) != 2, TH3, TH2>, TH1>;
-
-  auto iattrs = std::make_tuple( group.inquire(attrs)... );
-  auto filler = [&group] (auto &&...idxs) {
-    return [&group, idxs...] (Hist *hist, const double &weight) {
-      std::visit([&hist, &weight, &indices = group.ref_to_indices()] (const auto &...vec) {
-          for (int iE = 0; iE < indices.size(); ++iE)
-            hist->Fill(vec[indices[iE]]..., weight);
-        }, group(idxs)...);
-    };
-  };
-
-  return std::apply(filler, iattrs);
 }
 
 

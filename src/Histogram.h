@@ -78,6 +78,16 @@ namespace Framework {
 
   template <typename ...Hists>
   void save_all_as(const std::string &name, const Hists &...hists);
+
+  /// fillers for the histogram class
+  template <typename ...Groups>
+  auto filler_count(const Groups &...groups);
+
+  template <typename Group, typename ...Attributes>
+  auto filler_first_of(const Group &group, Attributes &&...attrs);
+
+  template <typename Group, typename ...Attributes>
+  auto filler_all_of(const Group &group, Attributes &&...attrs);
 }
 
 #include "Histogram.cc"
