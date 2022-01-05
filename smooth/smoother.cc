@@ -27,7 +27,8 @@ int main(int argc, char** argv) {
                                       + "use the option multiple times to make a multidimensional histogram.", true, "string", cmdbase);
   TCLAP::MultiArg<std::string> cmdweight("", "weight", "branch name to be used as weight. also accepts expressions (see --variable). "s
                                          + "has to be called 3 times if --type is weight i.e. systematic variations are in the form of event weights. "
-                                         + "in this case, first weight is the nominal and second and third are the up and down variations respectively.",
+                                         + "in this case, first weight is the nominal and second and third are the up and down variations respectively. "
+                                         + "if --one-side is used, then --weight needs to be specified only 2 times.",
                                          false, "string", cmdbase);
   TCLAP::ValuesConstraint<std::string> allmode( {"histogram", "systematic", "smooth"} );
   TCLAP::ValueArg<std::string> cmdmode("", "mode", "runtime mode. currently available: "s
