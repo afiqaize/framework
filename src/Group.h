@@ -48,8 +48,6 @@ namespace Framework {
     };
     using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
 
-    static constexpr int sum = (Types<Ts...>{}).sum();
-
     /// no default constructor
     Group() = delete;
 
