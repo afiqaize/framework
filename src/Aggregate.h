@@ -84,15 +84,6 @@ namespace Framework {
     std::array<std::reference_wrapper<Group<Ts...>>, N> v_group;
   };
 
-  /// deduction guides for convenience
-  /*
-  template <typename ...Groups> 
-  Aggregate(const char *, int, int, Groups &...) -> typename aggregate_helper<typename tuple_union<Groups...>::type>::type;
-
-  template <typename ...Groups> 
-  Aggregate(const std::string &, int, int, Groups &...) -> typename aggregate_helper<typename tuple_union<Groups...>::type>::type;
-  */
-
   template <std::size_t N, typename T>
   struct aggregate_helper {};
 
