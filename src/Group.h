@@ -30,13 +30,25 @@ namespace Framework {
   template <typename ...Ts>
   class Group {
     static_assert(unique_types<Ts...>, "ERROR: a Group must be initialized with unique types!");
-    static_assert(!contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
+    static_assert(not contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
                   "when bool is among the included types. For boolean attributes please use the 'boolean' type instead, which is a drop-in "
                   "replacement provided precisely to avoid this quirk of the standard.");
 
   public:
     using base = Group<Ts...>;
     using idxs = Indices<base>;
+    using sorted = typename tuple_selection_sort<std::tuple<Ts...>, greater_size_or_name>::type;
+
+    template <typename T>
+    struct data_impl {};
+
+    template <std::size_t... Is>
+    struct data_impl<std::index_sequence<Is...>> {
+      using type = std::variant<std::vector<std::tuple_element_t<Is, sorted>>...>;
+    };
+    using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
+
+    static constexpr int sum = (Types<Ts...>{}).sum();
 
     /// no default constructor
     Group() = delete;
@@ -82,21 +94,21 @@ namespace Framework {
     std::vector<std::string> attributes() const;
 
     /// reference to container of elements
-    const std::vector<std::variant<std::vector<Ts>...>>& data() const;
+    const std::vector<data_type>& data() const;
 
     /// reference to single attribute array - variant version
-    const std::variant<std::vector<Ts>...>& operator()(const std::string &name) const;
+    const data_type& operator()(const std::string &name) const;
 
     /// overload the above for when the attribute index is known e,g. from inquire()
     /// deliberately written without checks for invalid index, so use with care
-    const std::variant<std::vector<Ts>...>& operator()(int iattr) const;
+    const data_type& operator()(int iattr) const;
 
     /// mutable version of operator()
     /// intended for use by Tree only
-    std::variant<std::vector<Ts>...>& mref_to_attribute(const std::string &name);
+    data_type& mref_to_attribute(const std::string &name);
 
     /// known attribute index overload
-    std::variant<std::vector<Ts>...>& mref_to_attribute(int iattr);
+    data_type& mref_to_attribute(int iattr);
 
     /// reference to single attribute array - typed version
     template <typename T>
@@ -233,6 +245,11 @@ namespace Framework {
     /// selected elements are those whose index is in v_index
     void reorder();
 
+    /// conversion to other Group types, provided the conversion is not narrowing
+    /// should be safe... right?
+    template <template <typename, typename...> typename Other, typename ...Us>
+    operator Other<Us...>() const;
+
     /// name of the group
     std::string name;
 
@@ -242,7 +259,7 @@ namespace Framework {
 
     /// update the type of the attribute
     template <typename Number>
-    void retype(std::variant<std::vector<Ts>...> &dat);
+    void retype(data_type &dat);
 
     /// helper for transform_attribute
     /// where we need to call different instantiations of retype
@@ -274,10 +291,19 @@ namespace Framework {
     std::vector<std::pair<std::string, std::function<void()>>> v_attr;
 
     /// attribute storage
-    std::vector<std::variant<std::vector<Ts>...>> v_data;
+    std::vector<data_type> v_data;
   };
 }
 
 #include "Group.cc"
+
+// so that many of the tuple shenanigans work
+namespace std {
+  template <typename ...Ts>
+  struct tuple_size<Framework::Group<Ts...>> : std::integral_constant<size_t, sizeof...(Ts)> {};
+
+  template <size_t I, typename ...Ts>
+  struct tuple_element<I, Framework::Group<Ts...>> : tuple_element<I, typename Framework::Group<Ts...>::sorted> {};
+}
 
 #endif
