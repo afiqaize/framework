@@ -157,7 +157,7 @@ std::vector<std::string> Framework::Group<Ts...>::attributes() const
 
 
 template <typename ...Ts>
-const std::vector<std::variant<std::vector<Ts>...>>& Framework::Group<Ts...>::data() const
+const std::vector<typename Framework::Group<Ts...>::data_type>& Framework::Group<Ts...>::data() const
 {
   return v_data;
 }
@@ -165,7 +165,7 @@ const std::vector<std::variant<std::vector<Ts>...>>& Framework::Group<Ts...>::da
 
 
 template <typename ...Ts>
-const std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::operator()(const std::string &name) const
+const typename Framework::Group<Ts...>::data_type& Framework::Group<Ts...>::operator()(const std::string &name) const
 {
   auto iA = inquire(name);
   if (iA == -1)
@@ -177,7 +177,7 @@ const std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::operator()(cons
 
 
 template <typename ...Ts>
-const std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::operator()(int iattr) const
+const typename Framework::Group<Ts...>::data_type& Framework::Group<Ts...>::operator()(int iattr) const
 {
   return v_data[iattr];
 }
@@ -185,17 +185,17 @@ const std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::operator()(int 
 
 
 template <typename ...Ts>
-std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::mref_to_attribute(const std::string &name)
+typename Framework::Group<Ts...>::data_type& Framework::Group<Ts...>::mref_to_attribute(const std::string &name)
 {
-  return const_cast<std::variant<std::vector<Ts>...>&>( (*const_cast<const Framework::Group<Ts...>*>(this))(name) );
+  return const_cast<typename Framework::Group<Ts...>::data_type &>( (*const_cast<const Framework::Group<Ts...>*>(this))(name) );
 }
 
 
 
 template <typename ...Ts>
-std::variant<std::vector<Ts>...>& Framework::Group<Ts...>::mref_to_attribute(int iattr)
+typename Framework::Group<Ts...>::data_type& Framework::Group<Ts...>::mref_to_attribute(int iattr)
 {
-  return const_cast<std::variant<std::vector<Ts>...>&>( (*const_cast<const Framework::Group<Ts...>*>(this))(iattr) );
+  return const_cast<typename Framework::Group<Ts...>::data_type &>( (*const_cast<const Framework::Group<Ts...>*>(this))(iattr) );
 }
 
 
@@ -608,6 +608,16 @@ void Framework::Group<Ts...>::reorder()
 
 
 template <typename ...Ts>
+template <template <typename, typename...> typename Other, typename ...Us>
+Framework::Group<Ts...>::operator Other<Us...>() const
+{
+  static_assert(is_subset_of<Group<Ts...>, Other<Us...>>, "ERROR: Group conversion must not be narrowing!!!");
+  return reinterpret_cast<Other<Us...> &>(*this);
+}
+
+
+
+template <typename ...Ts>
 void Framework::Group<Ts...>::initialize(int init)
 {
   v_index.reserve(init);
@@ -620,7 +630,7 @@ void Framework::Group<Ts...>::initialize(int init)
 
 template <typename ...Ts>
 template <typename Number>
-void Framework::Group<Ts...>::retype(std::variant<std::vector<Ts>...> &dat)
+void Framework::Group<Ts...>::retype(typename Framework::Group<Ts...>::data_type &dat)
 {
   if constexpr (contained_in<Number, Ts...>) {
       if (std::get_if<std::vector<Number>>(&dat) == nullptr) {

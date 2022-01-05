@@ -90,4 +90,13 @@ namespace Framework {
 
 #include "Collection.cc"
 
+// so that many of the tuple shenanigans work
+namespace std {
+  template <typename ...Ts>
+  struct tuple_size<Framework::Collection<Ts...>> : tuple_size<Framework::Group<Ts...>> {};
+
+  template <size_t I, typename ...Ts>
+  struct tuple_element<I, Framework::Collection<Ts...>> : tuple_element<I, typename Framework::Group<Ts...>> {};
+}
+
 #endif
