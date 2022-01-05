@@ -264,8 +264,8 @@ int main() {
   // 3- the number of elements each array is expected to contain
   // 4- the collections that contribute an index to the aggregate (specified once per index)
   // here we want the 2-particle system made of the final top quark pair, so we provide the gen_particle twice, once for top and once for antitop
-  // it is worth noting that currently an aggregate can only be made from groups of the same type
-  Aggregate gen_ttbar("gen_ttbar", 7, 1, gen_particle, gen_particle);
+  // a helper function is used to facilitate with obtaining the correct aggregate type
+  auto gen_ttbar = make_aggregate("gen_ttbar", 7, 1, gen_particle, gen_particle);
 
   // when using aggregates, one must specify the indexing rule i.e. how the elements from the underlying groups are to be combined
   // this is done by providing a function, whose arguments are references to the groups
@@ -331,7 +331,7 @@ int main() {
   // rather than something one might actually be interested in doing in an actual analysis
   // so now let us consider a more typical example of a dileptonic ttbar system
   // where we are interested in six particles: tops, charged leptons and bottoms
-  Aggregate gen_tt_ll_bb("gen_tt_ll_bb", 15, 1, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle);
+  auto gen_tt_ll_bb = make_aggregate("gen_tt_ll_bb", 15, 1, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle);
 
   // set the indices similarly as above
   gen_tt_ll_bb.set_indexer([] (const auto &g1, const auto &g2, const auto &g3, const auto &g4, const auto &g5, const auto &g6)
