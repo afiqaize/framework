@@ -22,8 +22,8 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
   if (initialize == 0) {
     m_spin_corr.reserve(100); // exact size
     m_spin_corr.emplace_back("cLab", -9999.);
-    m_spin_corr.emplace_back("dPhi", -9999.);
-    m_spin_corr.emplace_back("dEta", -9999.);
+    m_spin_corr.emplace_back("dphi", -9999.);
+    m_spin_corr.emplace_back("deta", -9999.);
 
     m_spin_corr.emplace_back("cpTP", -9999.);
 
@@ -154,6 +154,9 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
     m_spin_corr.emplace_back("cnrM", -9999.);
     m_spin_corr.emplace_back("cnkM", -9999.);
 
+    m_spin_corr.emplace_back("ckjL", -9999.);
+    m_spin_corr.emplace_back("crqL", -9999.);
+
     m_spin_corr.emplace_back("cXxx", -9999.);
     m_spin_corr.emplace_back("cYyy", -9999.);
     m_spin_corr.emplace_back("cZzz", -9999.);
@@ -200,11 +203,11 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
   static const int icLab = index_with_key(m_spin_corr, "cLab");
   m_spin_corr[icLab].second = p4lab_aLep.Vect().Unit().Dot( p4lab_pLep.Vect().Unit() );
 
-  static const int idPhi = index_with_key(m_spin_corr, "dPhi");
-  m_spin_corr[idPhi].second = dPhi(p4lab_aLep.Phi(), p4lab_pLep.Phi());
+  static const int idphi = index_with_key(m_spin_corr, "dphi");
+  m_spin_corr[idphi].second = dphi(p4lab_aLep.Phi(), p4lab_pLep.Phi());
 
-  static const int idEta = index_with_key(m_spin_corr, "dEta");
-  m_spin_corr[idEta].second = absolute_difference(p4lab_aLep.Eta(), p4lab_pLep.Eta());
+  static const int ideta = index_with_key(m_spin_corr, "deta");
+  m_spin_corr[ideta].second = absolute_difference(p4lab_aLep.Eta(), p4lab_pLep.Eta());
 
   // the various spin corr vars with boosting: Bernreuther 1508.05271
   // xyz coordinate system
@@ -515,6 +518,14 @@ compute_spin_correlation(Number pTop_pt, Number pTop_eta, Number pTop_phi, Numbe
   m_spin_corr[icnrM].second = 0. - m_spin_corr[ickk].second - m_spin_corr[icnr].second + m_spin_corr[icrn].second;
   m_spin_corr[icnkM].second = 0. - m_spin_corr[icnk].second - m_spin_corr[icrr].second + m_spin_corr[ickn].second;
   m_spin_corr[icrkM].second = 0. - m_spin_corr[icrk].second + m_spin_corr[ickr].second - m_spin_corr[icnn].second;
+
+  // and finally the starred linears
+  // no need for any flips, as e.g. cHel and cHan are sufficient to recover the star sign
+  static const int ickjL = index_with_key(m_spin_corr, "ckjL");
+  static const int icrqL = index_with_key(m_spin_corr, "crqL");
+
+  m_spin_corr[ickjL].second = 0. - m_spin_corr[ickj].second - m_spin_corr[icrr].second - m_spin_corr[icnn].second;
+  m_spin_corr[icrqL].second = 0. - m_spin_corr[ickk].second - m_spin_corr[icrq].second - m_spin_corr[icnn].second;
 
   // the flipped cHel in the xyz system
   static const int icXxx = index_with_key(m_spin_corr, "cXxx");

@@ -9,16 +9,53 @@
 #include <type_traits>
 #include <cmath>
 
-template <typename K, typename V, typename C, typename std::enable_if_t<std::is_convertible_v<C, K>>* = nullptr>
-int index_with_key(const std::vector<std::pair<K, V>> &vec, const C &key)
+/// map-like interface with vector of pair, assuming keys are unique
+/// i.e. key-based std::find
+template <typename Key, typename Value, typename Inquiry, typename std::enable_if_t<std::is_convertible_v<Inquiry, Key>>* = nullptr>
+int index_with_key(const std::vector<std::pair<Key, Value>> &vec, const Inquiry &inq)
 {
   for (int iE = 0; iE < vec.size(); ++iE) {
-    auto &alias = vec[iE].first;
-    if (alias == key)
+    auto &key = vec[iE].first;
+    if (key == inq)
       return iE;
   }
 
   return -1;
+}
+
+
+
+/// as above, but now more along the lines of find_if on the key
+/// assumes that the vector is such that the comparator makes sense
+/// which can either be that it is sorted, etc
+template <typename Key, typename Value, typename Predicate>
+int index_with_predicate(const std::vector<std::pair<Key, Value>> &vec, Predicate &&predicate)
+{
+  for (int iE = 0; iE < vec.size(); ++iE) {
+    auto &key = vec[iE].first;
+    if (predicate(key))
+      return iE;
+  }
+
+  return -1;
+}
+
+
+
+/// utility functions based on the above
+/// others will come as use cases appear
+template <typename Key, typename Value, typename Inquiry>
+int index_greater_equal(const std::vector<std::pair<Key, Value>> &vec, const Inquiry &inq)
+{
+  return index_with_predicate(vec, [&inq] (const Key &key) { return key >= inq; });
+}
+
+
+
+template <typename Key, typename Value, typename Inquiry>
+int index_less_equal(const std::vector<std::pair<Key, Value>> &vec, const Inquiry &inq)
+{
+  return index_with_predicate(vec, [&inq] (const Key &key) { return key <= inq; });
 }
 
 

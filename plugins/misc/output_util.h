@@ -5,7 +5,7 @@
 #ifndef FWK_OUTPUT_UTIL_H
 #define FWK_OUTPUT_UTIL_H
 
-#include "misc/string_io.h"
+#include "string_io.h"
 #include "array_histogram.h"
 
 #include "TFile.h"

@@ -12,31 +12,41 @@
 
 // https://stackoverflow.com/questions/670308/alternative-to-vectorbool
 class boolean {
- public:
-   boolean(): value() {}
-   boolean(bool value_) : value(value_) {}
+public:
+  boolean(): value() {}
+  boolean(bool value_) : value(value_) {}
 
-   operator bool() const {return value;}
+  operator bool() const {return value;}
 
-   /// the following operators are to allow bool* b = &v[0]; (v is a vector here)
-   bool* operator& () { return &value; }
-   const bool* operator& () const { return &value; }
+  /// the following operators are to allow bool *b = &v[0]; (v is a vector here)
+  bool* operator& () { return &value; }
+  const bool* operator& () const { return &value; }
 
- private:
-   bool value;
+private:
+  bool value;
 };
 
 namespace Framework {
   template <typename ...Ts>
   class Group {
     static_assert(unique_types<Ts...>, "ERROR: a Group must be initialized with unique types!");
-    static_assert(!contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
+    static_assert(not contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
                   "when bool is among the included types. For boolean attributes please use the 'boolean' type instead, which is a drop-in "
                   "replacement provided precisely to avoid this quirk of the standard.");
 
   public:
     using base = Group<Ts...>;
     using idxs = Indices<base>;
+    using sorted = typename tuple_selection_sort<std::tuple<Ts...>, greater_size_or_name>::type;
+
+    template <typename T>
+    struct data_impl {};
+
+    template <std::size_t... Is>
+    struct data_impl<std::index_sequence<Is...>> {
+      using type = std::variant<std::vector<std::tuple_element_t<Is, sorted>>...>;
+    };
+    using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
 
     /// no default constructor
     Group() = delete;
@@ -44,20 +54,24 @@ namespace Framework {
     /// constructor
     Group(const std::string &name_, int counter_);
 
-    /// number of currently held elements
-    int n_elements() const noexcept;
-
-    /// ref instead of copy of the above
-    const int& ref_to_n_elements() const noexcept;
-
     /// such that if (Group) is a well-defined expression
     /// and to no longer need to do if (Group.n_elements)
     explicit operator bool() const { return selected > 0; };
+
+    /// number of currently held elements
+    /// these two are absolutely identical
+    int n_elements() const noexcept;
+    int size() const noexcept;
+
+    /// ref instead of copy of the above
+    const int& ref_to_n_elements() const noexcept;
+    const int& ref_to_size() const noexcept;
 
     /// a mutable ref version
     /// can't be const if it's to be used to write TTree...
     /// might be worth considering to write TTree using copies rather than in-place references?
     int& mref_to_n_elements() noexcept;
+    int& mref_to_size() noexcept;
 
     /// number of currently held attributes
     int n_attributes() const noexcept;
@@ -78,21 +92,21 @@ namespace Framework {
     std::vector<std::string> attributes() const;
 
     /// reference to container of elements
-    const std::vector<std::variant<std::vector<Ts>...>>& data() const;
+    const std::vector<data_type>& data() const;
 
     /// reference to single attribute array - variant version
-    const std::variant<std::vector<Ts>...>& operator()(const std::string &name) const;
+    const data_type& operator()(const std::string &name) const;
 
     /// overload the above for when the attribute index is known e,g. from inquire()
     /// deliberately written without checks for invalid index, so use with care
-    const std::variant<std::vector<Ts>...>& operator()(int iattr) const;
+    const data_type& operator()(int iattr) const;
 
     /// mutable version of operator()
     /// intended for use by Tree only
-    std::variant<std::vector<Ts>...>& mref_to_attribute(const std::string &name);
+    data_type& mref_to_attribute(const std::string &name);
 
     /// known attribute index overload
-    std::variant<std::vector<Ts>...>& mref_to_attribute(int iattr);
+    data_type& mref_to_attribute(int iattr);
 
     /// reference to single attribute array - typed version
     template <typename T>
@@ -112,7 +126,7 @@ namespace Framework {
     const std::vector<T>* get_if(int iattr) const noexcept;
 
     /// reference to single element in an attribute - typed version
-    /// equivalent to get<T>(attr)[v_index[index]]
+    /// equivalent to get<T>(attr)[index]
     /// i.e. gives the nth element as per the current Group state accounting for previous update_indices calls 
     template <typename T>
     const T& get(const std::string &name, int index) const;
@@ -127,19 +141,35 @@ namespace Framework {
     /// ref instead of copy of the above
     const idxs& ref_to_indices() const;
 
-    /// and individual index access i.e. v_index[order] with bounds checking
-    int index(int order) const;
+    /// a few index access utilities ala Indices
+    int& operator[](int idx);
+
+    const int& operator[](int idx) const;
+
+    typename idxs::iter begin() noexcept;
+
+    typename idxs::citer begin() const noexcept;
+
+    typename idxs::citer cbegin() const noexcept;
+
+    typename idxs::iter end() noexcept;
+
+    typename idxs::citer end() const noexcept;
+
+    typename idxs::citer cend() const noexcept;
 
     /// update the indices with another set e.g. output of filter/sort
     /// no checking if the indices are actually legit
-    void update_indices(const idxs &v_idx);
+    bool update_indices(const idxs &v_idx);
 
     /// element iterator taking a function and runs the visitor over it
     /// can be type-dependent or otherwise
-    /// other args are the attribute and element count to iterate over
-    /// -1 or anything > v_index.size() to iterate over everything
-    template <typename Function, typename ...Attributes>
-    void iterate(Function function, const idxs &v_idx, Attributes &&...attrs) const;
+    /// second arg can either be the indices or the name of the first attribute to iterate over
+    /// if indices, then iterate over those indices only
+    /// if an attribute name, then iteration is done over all currently held elements
+    /// third args onwards are optional extra attributes to iterate over
+    template <typename Function, typename IdxAttr, typename ...Attributes>
+    void iterate(Function function, const IdxAttr &idxs_or_attr, Attributes &&...attrs) const;
 
     /// filter the elements in the collection by some criteria on a given attribute
     /// custom filter needs a function returning a bool and taking two args of type Number
@@ -213,6 +243,11 @@ namespace Framework {
     /// selected elements are those whose index is in v_index
     void reorder();
 
+    /// conversion to other Group types, provided the conversion is not narrowing
+    /// should be safe... right?
+    template <template <typename, typename...> typename Other, typename ...Us>
+    operator Other<Us...>() const;
+
     /// name of the group
     std::string name;
 
@@ -222,7 +257,7 @@ namespace Framework {
 
     /// update the type of the attribute
     template <typename Number>
-    void retype(std::variant<std::vector<Ts>...> &dat);
+    void retype(data_type &dat);
 
     /// helper for transform_attribute
     /// where we need to call different instantiations of retype
@@ -238,7 +273,9 @@ namespace Framework {
     idxs sort_helper(const idxs &v_idx, Compare &compare, int attr) const;
 
     /// element counter before prefiltering
-    int counter;
+    /// a variant purely to suppress root's error message
+    /// counter is still not expected to go beyond int, however
+    std::variant<int, uint> counter;
 
     /// element counter after prefiltering i.e. v_index.size()
     int selected;
@@ -252,10 +289,19 @@ namespace Framework {
     std::vector<std::pair<std::string, std::function<void()>>> v_attr;
 
     /// attribute storage
-    std::vector<std::variant<std::vector<Ts>...>> v_data;
+    std::vector<data_type> v_data;
   };
 }
 
 #include "Group.cc"
+
+// so that many of the tuple shenanigans work
+namespace std {
+  template <typename ...Ts>
+  struct tuple_size<Framework::Group<Ts...>> : std::integral_constant<size_t, sizeof...(Ts)> {};
+
+  template <size_t I, typename ...Ts>
+  struct tuple_element<I, Framework::Group<Ts...>> : tuple_element<I, typename Framework::Group<Ts...>::sorted> {};
+}
 
 #endif

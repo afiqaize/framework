@@ -45,11 +45,19 @@ int main() {
   // in this example we will analyze flat trees, so we specify that our dataset is of type TChain
   // the first argument to the constructor is the dataset name, and second is the name of the TTree we will be analyzing
   // note: Dataset<TChain> is used also when analyzing one ROOT file, since Dataset<TTree> is dedicated to text file analysis
-  Dataset<TChain> dat("mc", "Events");
+  Dataset<TChain> dxx("mc", "Events");
   // add the files to be analyzed
-  dat.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/022107FA-F567-1B44-B139-A18ADC996FCF.root");
-  //dat.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/0EF179F9-428D-B944-8DB3-63E04ED9AE8E.root");
-  //dat.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/0EF179F9-428D-B944-8DB3-63E04ED9AE8E.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/022107FA-F567-1B44-B139-A18ADC996FCF.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/0EF179F9-428D-B944-8DB3-63E04ED9AE8E.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/11456FD2-8181-DF40-8661-A36BF57410F7.root");
+  /*dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/13DEEABE-EB4C-1245-BEB1-3EF6C101E143.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/140E099B-8D80-BC43-BFA2-FE5713A28C75.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/1464451C-D07C-5D46-862C-85A916008671.root");
+  dxx.add_file("/pnfs/desy.de/cms/tier2/store/mc/RunIIAutumn18NanoAODv7/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NANOAODSIM/Nano02Apr2020_102X_upgrade2018_realistic_v21-v1/60000/1899530C-EBE9-9D40-8E62-C8C71B525C2C.root");*/
+
+  // this is to illustrate that dataset can be split based on file
+  // in this case dxx is split into 3 parts, and dat is holding the 1st part of the 3
+  auto dat = dxx.split(3, 0);
 
   // next step is to specify the attributes to be included in the analysis
   // for this we will make use of two data structures, collections and aggregates
@@ -125,8 +133,7 @@ int main() {
   gen_particle.transform_attribute("final_w_top_daughter", 
                                    // we capture references to the full array of mother indices and the final top tag
                                    // ordering matters; we can capture final_top only after defining it
-                                   [&gen_particle] 
-                                   (int pdg, int flag, int idx) -> boolean {
+                                   [&gen_particle] (int pdg, int flag, int idx) -> boolean {
                                      // a note about get<T>:
                                      // upon calling add_attribute, all attributes are initialized to the first type of the collection
                                      // which is then adapted to the right type when the input file is scanned
@@ -158,9 +165,11 @@ int main() {
   // in this case we tag the entire set of particles of interest in a dileptonic ttbar decay tt -> WbWb -> lvblvb
   // restricting leptons to only electron or muon as is commonly done in experimental analyses
   gen_particle.transform_attribute("dileptonic_ttbar", 
-                                   [&pdgs = gen_particle.get<int>("pdg"), &idxs = gen_particle.get<int>("mother"), 
-                                    &flags = gen_particle.get<int>("flag")] 
-                                   (int pdg, int flag, int idx) -> int {
+                                   [&gen_particle] (int pdg, int flag, int idx) -> int {
+                                     static const auto &pdgs = gen_particle.get<int>("pdg");
+                                     static const auto &flags = gen_particle.get<int>("flag");
+                                     static const auto &idxs = gen_particle.get<int>("mother");
+
                                      // integer flag for particles which are part of a generator-level dileptonic ttbar system
                                      // 1 top
                                      // 2 W+
@@ -255,8 +264,8 @@ int main() {
   // 3- the number of elements each array is expected to contain
   // 4- the collections that contribute an index to the aggregate (specified once per index)
   // here we want the 2-particle system made of the final top quark pair, so we provide the gen_particle twice, once for top and once for antitop
-  // it is worth noting that currently an aggregate can only be made from groups of the same type
-  Aggregate gen_ttbar("gen_ttbar", 7, 1, gen_particle, gen_particle);
+  // a helper function is used to facilitate with obtaining the correct aggregate type
+  auto gen_ttbar = make_aggregate("gen_ttbar", 7, 1, gen_particle, gen_particle);
 
   // when using aggregates, one must specify the indexing rule i.e. how the elements from the underlying groups are to be combined
   // this is done by providing a function, whose arguments are references to the groups
@@ -322,7 +331,7 @@ int main() {
   // rather than something one might actually be interested in doing in an actual analysis
   // so now let us consider a more typical example of a dileptonic ttbar system
   // where we are interested in six particles: tops, charged leptons and bottoms
-  Aggregate gen_tt_ll_bb("gen_tt_ll_bb", 15, 1, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle);
+  auto gen_tt_ll_bb = make_aggregate("gen_tt_ll_bb", 15, 1, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle, gen_particle);
 
   // set the indices similarly as above
   gen_tt_ll_bb.set_indexer([] (const auto &g1, const auto &g2, const auto &g3, const auto &g4, const auto &g5, const auto &g6)

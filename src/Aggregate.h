@@ -17,7 +17,7 @@
 // todo: get rid of index masking
 
 namespace Framework {
-  template <int N, typename ...Ts>
+  template <std::size_t N, typename ...Ts>
   class Aggregate : public Group<Ts...> {
   public:
     /// constructor
@@ -67,7 +67,7 @@ namespace Framework {
 
     /// ie the actual reference to the element returned by inquire_group
     /// necessarily implemented without safety...
-    const std::variant<std::vector<Ts>...>& underlying_attribute(const std::string &name);
+    const typename Group<Ts...>::data_type& underlying_attribute(const std::string &name);
 
     /// indexing function - how to go from indices in each group to an index in the aggregate
     std::function<void()> indexer;
@@ -75,23 +75,38 @@ namespace Framework {
     /// and the indices that are made by the above
     std::vector<std::array<int, N>> v_indices;
 
-    /// just a flag for each attribute whether it is external or internal
+    /// flag for each attribute whether it is external or internal
     /// external 1 are attributes that are transformed from groups' underlying attributes
     /// internal 0 are attributes transformed from this aggregate's external attributes
-    std::vector<int> v_flag;
+    std::vector<bool> v_flag;
 
     /// references to the groups
     std::array<std::reference_wrapper<Group<Ts...>>, N> v_group;
   };
 
-  /// deduction guides for convenience
-  template <typename ...Ts, typename ...Groups> 
-  Aggregate(const char *, int, int, Group<Ts...> &, Groups &...) -> Aggregate<sizeof...(Groups) + 1, Ts...>;
+  template <std::size_t N, typename T>
+  struct aggregate_helper {};
 
-  template <typename ...Ts, typename ...Groups> 
-  Aggregate(const std::string &, int, int, Group<Ts...> &, Groups &...) -> Aggregate<sizeof...(Groups) + 1, Ts...>;
+  template <std::size_t N, template <typename, typename...> typename G, typename ...Ts>
+  struct aggregate_helper<N, G<Ts...>> {
+    using type = Aggregate<N, Ts...>;
+  };
+
+  /// factory function, deduction guide ain't cuttin it anymore
+  template <typename ...Groups>
+  typename aggregate_helper<sizeof...(Groups), typename tuple_union<Groups...>::type>::type
+  make_aggregate(const std::string &name, int reserve, int init, Groups &...groups);
 }
 
 #include "Aggregate.cc"
+
+// so that many of the tuple shenanigans work
+namespace std {
+  template <size_t N, typename ...Ts>
+  struct tuple_size<Framework::Aggregate<N, Ts...>> : tuple_size<Framework::Group<Ts...>> {};
+
+  template <size_t I, size_t N, typename ...Ts>
+  struct tuple_element<I, Framework::Aggregate<N, Ts...>> : tuple_element<I, typename Framework::Group<Ts...>> {};
+}
 
 #endif

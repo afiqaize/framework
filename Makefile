@@ -6,9 +6,11 @@ FWK_BASE_DIR = ..
 COMPILER = g++
 SAVE_TEMPS = false
 DEBUG = false
+FWK_SRC_DIR = $(FWK_BASE_DIR)/src/
+FWK_PLUGINS_DIR = $(FWK_BASE_DIR)/plugins/
 
 CXXFLAGS = $(shell root-config --cflags --evelibs) -std=c++17 -O3 -Wall -Wextra -Wpedantic -Werror -Wno-float-equal -Wno-sign-compare -Wfatal-errors
-FWK_INCLUDES = -I $(FWK_BASE_DIR)/plugins/ -I $(FWK_BASE_DIR)/src/
+FWK_INCLUDES = -I $(FWK_SRC_DIR) -I $(FWK_PLUGINS_DIR)
 
 
 %: %.cc

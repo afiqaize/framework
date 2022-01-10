@@ -10,10 +10,10 @@
 
 int main(int argc, char** argv) {
   TCLAP::CmdLine cmdbase("", ' ', "0.01");
-  TCLAP::MultiArg<std::string> cmdfile("", "file", std::string("input filename to be used, assumed to end with .root. ")
+  TCLAP::MultiArg<std::string> cmdfile("", "file", "input filename to be used, assumed to end with .root. "s
                                        + "use the option multiple times to sum up multiple files.", true, "string", cmdbase);
   TCLAP::ValueArg<std::string> cmdtree("", "tree", "tree name of nominal and systematic files, if present.", true, "", "string", cmdbase);
-  TCLAP::MultiArg<std::string> cmdvar("", "variable", std::string("variable(s) to use. ")
+  TCLAP::MultiArg<std::string> cmdvar("", "variable", "variable(s) to use. "s
                                       + "variable names must correspond to branch names in the tree. "
                                       + "they must contain only alphanumeric or underscore characters. "
                                       + "example syntax: 'cHel : nbin;min,max' or 'mtt : edge1,edge2,...,edgeN' " 
@@ -25,18 +25,19 @@ int main(int argc, char** argv) {
                                       + "variables and expressions are interpreted as floating-point. "
                                       + "under- and overflows are automatically added to the first and last bins respectively. "
                                       + "use the option multiple times to make a multidimensional histogram.", true, "string", cmdbase);
-  TCLAP::MultiArg<std::string> cmdweight("", "weight", std::string("branch name to be used as weight. also accepts expressions (see --variable). ")
+  TCLAP::MultiArg<std::string> cmdweight("", "weight", "branch name to be used as weight. also accepts expressions (see --variable). "s
                                          + "has to be called 3 times if --type is weight i.e. systematic variations are in the form of event weights. "
-                                         + "in this case, first weight is the nominal and second and third are the up and down variations respectively.",
+                                         + "in this case, first weight is the nominal and second and third are the up and down variations respectively. "
+                                         + "if --one-side is used, then --weight needs to be specified only 2 times.",
                                          false, "string", cmdbase);
   TCLAP::ValuesConstraint<std::string> allmode( {"histogram", "systematic", "smooth"} );
-  TCLAP::ValueArg<std::string> cmdmode("", "mode", std::string("runtime mode. currently available: ")
+  TCLAP::ValueArg<std::string> cmdmode("", "mode", "runtime mode. currently available: "s
                                        + "histogram: make histograms of the provided files (--systematic related options are ignored) "
                                        + "systematic: make nominal and systematic histograms "
                                        + "smooth: as systematic and also perform smoothing on the systematic histograms "
                                        + ">1D histograms are unrolled, with the first dimension presented in bins of second variable and so on.",
                                        true, "", &allmode, cmdbase);
-  TCLAP::ValueArg<std::string> cmdsyst("", "systematic", std::string("systematic uncertainty name. ")
+  TCLAP::ValueArg<std::string> cmdsyst("", "systematic", "systematic uncertainty name. "s
                                        + "if --type is tree, files containing systematically varied events are "
                                        + "assumed to be in the same directory as nominal and "
                                        + "are named filename_systematic_direction.root, where: " 
@@ -44,27 +45,27 @@ int main(int argc, char** argv) {
                                        + "systematic is as given to --systematic, "
                                        + "and direction is up and down.", false, "", "string", cmdbase);
   TCLAP::ValuesConstraint<std::string> alltype( {"tree", "weight"} );
-  TCLAP::ValueArg<std::string> cmdtype("", "type", std::string("type of systematic variations. ")
+  TCLAP::ValueArg<std::string> cmdtype("", "type", "type of systematic variations. "s
                                        + "tree is when the systematic variations are given in separate files (see --systematic) "
                                        + "and weight is when the variations are in the form of event weights.",
                                        false, "tree", &alltype, cmdbase);
   TCLAP::ValueArg<std::string> cmdsnap("", "snapshot", "file containing previous cross-validation run to be continued from.",
                                        false, "", "string", cmdbase);
   TCLAP::ValuesConstraint<std::string> allres( {"unroll", "normal", "all"} );
-  TCLAP::ValueArg<std::string> cmdrestype("", "result-type", std::string("type of the result i.e. output histograms. ")
+  TCLAP::ValueArg<std::string> cmdrestype("", "result-type", "type of the result i.e. output histograms. "s
                                           + "unroll means >1D histograms are laid in slices of the first variable in the first bin of second and so on. "
                                           + "in this case bin edges information is lost for >1D histogram. "
                                           + "normal means 2D and 3D histogram is written out without unrolling. "
                                           + "all is unroll + normal. "
                                           + "default result-type is unroll.",
                                           false, "unroll", &allres, cmdbase);
-  TCLAP::MultiArg<double> cmdbwidth("", "bandwidth", std::string("fixed bandwidth to be used, in case one wants to skip cross-validation. ")
+  TCLAP::MultiArg<double> cmdbwidth("", "bandwidth", "fixed bandwidth to be used, in case one wants to skip cross-validation. "s
                                     + "it is expressed as a fraction 0 < bw <= 1 and has to be provided as many times as as --variables. "
                                     + "first bandwidth is assigned to the first variable and so on. "
                                     + "in cross-validation, a range of 0.05 - 1 is tested.", false, "double", cmdbase);
   TCLAP::ValueArg<int> cmdnpart("", "npartition", "number of partitions to be used in cross-validation.", false, 10, "integer", cmdbase);
   TCLAP::ValueArg<int> cmdnrepeat("", "nrepeatcv", "number of times cross-validation is to be repeated.", false, 10, "integer", cmdbase);
-  TCLAP::SwitchArg cmdoneside("", "one-side", std::string("when the systematic uncertainty is one-sided rather than up and down. ")
+  TCLAP::SwitchArg cmdoneside("", "one-side", "when the systematic uncertainty is one-sided rather than up and down. "s
                               + "if --type is tree then the expected systematic file name is filename_systematic.root "
                               + "and if --type is weight then --weight needs to be called 2 times.", cmdbase, false);
   TCLAP::SwitchArg cmdsymm("", "dont-symmetrize", "independently smooth the systematic deviations without symmetrizing.", cmdbase, true);

@@ -26,9 +26,9 @@ Number absolute_difference(Number num1, Number num2)
 
 
 
-/// actually abs(dPhi) i.e. defined within [0, pi]
+/// actually abs(dphi) i.e. defined within [0, pi]
 template <typename Number = float>
-Number dPhi(Number phi1, Number phi2) 
+Number dphi(Number phi1, Number phi2)
 {
   return std::acos( std::cos(phi1 - phi2) );
 }
@@ -38,7 +38,16 @@ Number dPhi(Number phi1, Number phi2)
 template <typename Number = float>
 Number dR(Number eta1, Number phi1, Number eta2, Number phi2) 
 {
-  return quadratic_sum(eta1 - eta2, dPhi(phi1, phi2));
+  return quadratic_sum(eta1 - eta2, dphi(phi1, phi2));
+}
+
+
+
+template <typename Number = float>
+Number dR2(Number eta1, Number phi1, Number eta2, Number phi2)
+{
+  auto e = eta1 - eta2, p = dphi(phi1, phi2);
+  return (e * e) + (p * p);
 }
 
 

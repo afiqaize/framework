@@ -2,18 +2,16 @@
 // author: afiq anuar
 // short: please refer to header for information
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 template <typename ...Groups>
 Framework::Aggregate<N, Ts...>::Aggregate(const std::string &name_, int reserve_, int init, Groups &...groups) : 
 Framework::Group<Ts...>::Group(name_, 0),
-v_group{ std::ref<Group<Ts...>>(groups)... }
+v_group{ (Group<Ts...>&) groups... }
 {
   static_assert(N > 1, "ERROR: Aggregate must be made out of two or more (not necessarily unique) Groups!!");
   static_assert(sizeof...(groups) == N, "ERROR: non-matching template argument count and number of Groups in Aggregate ctor!!");
-  static_assert((std::is_same_v<typename Group<Ts...>::base, typename Groups::base> and ...), 
-                "ERROR: the underlying Group types going into the Aggregate must be exactly the same!!");
-  //static_assert((contained_in<typename Groups<Ts...>::base, typename Group::base> and ...), 
-  //              "ERROR: the Aggregate must contain all the types contained by its underlying Groups!!");
+  static_assert((is_subset_of<Groups, typename Framework::Group<Ts...>::base> and ...), 
+                "ERROR: the Aggregate must contain all the types contained by its underlying Groups!!");
 
   reserve(reserve_);
   if (init > 0)
@@ -24,7 +22,7 @@ v_group{ std::ref<Group<Ts...>>(groups)... }
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 template <typename Indexer>
 void Framework::Aggregate<N, Ts...>::set_indexer(Indexer indexer_)
 {
@@ -42,7 +40,7 @@ void Framework::Aggregate<N, Ts...>::set_indexer(Indexer indexer_)
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 void Framework::Aggregate<N, Ts...>::reserve(int attr)
 {
   v_flag.reserve(attr);
@@ -51,7 +49,7 @@ void Framework::Aggregate<N, Ts...>::reserve(int attr)
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 template <typename Function, typename ...Attributes>
 bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Function function, Attributes &&...attrs)
 {
@@ -108,7 +106,7 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
   // grps and grp_inq must be captured by value, since they die outside add_attribute scope
   auto f_apply = [f_calculate, this, iattr = this->v_data.size(), grps, grp_inq] (Attributes &&...attrs) -> void {
     static std::array<int, sizeof...(attrs)> attr_idx;
-    for (int iE = 0; iE < this->counter; ++iE) {
+    for (int iE = 0; iE < std::get<int>(this->counter); ++iE) {
       attr_idx.fill(-1);
       auto single_idx = v_indices[iE];
 
@@ -129,7 +127,7 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
 
   this->v_attr.emplace_back(std::make_pair(attr, std::function<void()>(f_add)));
   this->v_data.emplace_back(std::vector<typename Traits::result_type>());
-  v_flag.emplace_back(1);
+  v_flag.emplace_back(true);
 
   std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
   return true;
@@ -137,12 +135,12 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 template <typename Function, typename ...Attributes>
 bool Framework::Aggregate<N, Ts...>::transform_attribute(const std::string &attr, Function function, Attributes &&...attrs)
 {
   if (Group<Ts...>::transform_attribute(attr, function, std::forward<Attributes>(attrs)...)) {
-    v_flag.emplace_back(0);
+    v_flag.emplace_back(false);
     std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
     return true;
   }
@@ -152,36 +150,36 @@ bool Framework::Aggregate<N, Ts...>::transform_attribute(const std::string &attr
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 void Framework::Aggregate<N, Ts...>::populate(long long)
 {
   indexer();
-  this->counter = v_indices.size();
-  this->selected = this->counter;
+  this->counter = int(v_indices.size());
+  this->selected = std::get<int>(this->counter);
 
-  if (this->counter > this->v_index.capacity())
-    this->initialize(this->counter);
+  if (std::get<int>(this->counter) > this->v_index.capacity())
+    this->initialize(std::get<int>(this->counter));
 
   this->v_index.clear();
-  for (int iD = 0; iD < this->counter; ++iD)
+  for (int iD = 0; iD < std::get<int>(this->counter); ++iD)
     this->v_index.emplace_back(iD);
 
   // first run the external attributes
   for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_flag[iD] == 1)
+    if (v_flag[iD])
       this->v_attr[iD].second();
   }
 
   // then internals after all externals have been populated
   for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_flag[iD] == 0)
+    if (v_flag[iD])
       this->v_attr[iD].second();
   }
 }
 
 
 
-template <int N, typename ...Ts>
+template <std::size_t N, typename ...Ts>
 std::array<int, 2> Framework::Aggregate<N, Ts...>::inquire_group(const std::string &name)
 {
   const auto iTkn = name.find("::");
@@ -201,11 +199,18 @@ std::array<int, 2> Framework::Aggregate<N, Ts...>::inquire_group(const std::stri
 
 
 
-template <int N, typename ...Ts>
-const std::variant<std::vector<Ts>...>& Framework::Aggregate<N, Ts...>::underlying_attribute(const std::string &name)
+template <std::size_t N, typename ...Ts>
+const typename Framework::Group<Ts...>::data_type& Framework::Aggregate<N, Ts...>::underlying_attribute(const std::string &name)
 {
   const auto iGA = inquire_group(name);
   return v_group[ iGA[0] ].get().data()[ iGA[1] ];
 }
 
 
+
+template <typename ...Groups>
+typename Framework::aggregate_helper<sizeof...(Groups), typename tuple_union<Groups...>::type>::type
+Framework::make_aggregate(const std::string &name, int reserve, int init, Groups &...groups)
+{
+  return typename Framework::aggregate_helper<sizeof...(Groups), typename tuple_union<Groups...>::type>::type(name, reserve, init, groups...);
+}

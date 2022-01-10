@@ -9,10 +9,10 @@
 #include "Collection.h"
 
 #include <cmath>
-#include "misc/string_io.h"
-#include "misc/container_util.h"
-#include "misc/function_util.h"
-#include "misc/rng_util.h"
+#include "string_io.h"
+#include "container_util.h"
+#include "function_util.h"
+#include "rng_util.h"
 
 #include "array_histogram.h"
 #include "output_util.h"
@@ -265,22 +265,19 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     auto veb = split(var, ":");
     if (veb.size() != 2) {
       std::cerr << "Variable or expression " << var << " is invalid" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, 
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
     auto ve = split(veb[0], "=");
     if (ve.size() != 1 and ve.size() != 2) {
       std::cerr << "Variable or expression " << veb[0] << " is invalid" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
     strip(ve[0]);
     if (!valid_name(ve[0])) {
       std::cerr << "Invalid variable name " << ve[0] << ". Aborting. Current version considers only names containing " 
         "alphanumeric characters or underscores"<< std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
     if (ve.size() == 2)
@@ -323,8 +320,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     }
     else {
       std::cerr << "Binning information for variable  " << ve[0] << " is invalid. Note that variables with only one bin is not accepted" << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{},
-                             std::string(""));
+      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
   }
 
@@ -562,6 +558,28 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
   dataset.analyze(-1, -1, silent);
 
   return hists;
+}
+
+
+
+/// make a single histogram with nvar bins
+/// and each bin i has a content of nbin of ith variable
+Arrayhist nbin_hist(const std::tuple<
+                    std::vector<std::vector<std::string>>,
+                    std::vector<std::vector<double>>,
+                    std::vector<std::vector<double>>,
+                    std::string> &variables_bins)
+{
+  const auto &bins = std::get<1>(variables_bins);
+  const int nvar = bins.size();
+
+  Arrayhist hist(nvar);
+  for (int iv = 0; iv < nvar; ++iv) {
+    hist(iv, 0) = bins[iv].size() - 1;
+    hist(iv, 1) = 0.;
+  }
+
+  return hist;
 }
 
 

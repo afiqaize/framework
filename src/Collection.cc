@@ -56,6 +56,7 @@ bool Framework::Collection<Ts...>::add_attribute(const std::string &attr, const 
 
   this->v_attr.emplace_back(attr, nullptr);
   v_branch.emplace_back(branch, nullptr);
+  v_default.emplace_back(typename std::tuple_element_t<0, std::tuple<Ts...>>{});
   this->v_data.emplace_back(std::vector<typename std::tuple_element_t<0, std::tuple<Ts...>>>());
 
   std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
@@ -66,7 +67,7 @@ bool Framework::Collection<Ts...>::add_attribute(const std::string &attr, const 
 
 template <typename ...Ts>
 template <typename Number>
-bool Framework::Collection<Ts...>::add_attribute(const std::string &attr, const std::string &branch, Number)
+bool Framework::Collection<Ts...>::add_attribute(const std::string &attr, const std::string &branch, Number number)
 {
   static_assert(contained_in<Number, Ts...> or (std::is_same_v<Number, bool> and contained_in<boolean, Ts...>), 
                 "ERROR: Collection::add_attribute: the initializing Number type is not among the types expected by the Collection!!");
@@ -75,6 +76,8 @@ bool Framework::Collection<Ts...>::add_attribute(const std::string &attr, const 
 
   if (add_attribute(attr, branch)) {
     Group<Ts...>::template retype<Attribute>(this->v_data.back());
+    v_default.back() = Attribute(number);
+
     return true;
   }
 
@@ -89,6 +92,7 @@ bool Framework::Collection<Ts...>::transform_attribute(const std::string &attr, 
 {
   if (Group<Ts...>::transform_attribute(attr, function, std::forward<Attributes>(attrs)...)) {
     v_branch.emplace_back("", nullptr);
+    v_default.emplace_back(typename std::tuple_element_t<0, std::tuple<Ts...>>{});
     std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
     return true;
   }
@@ -105,8 +109,22 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
   tree = dataset.tree().get();
 
   if (counter_name != "") {
+    auto leaf = tree->GetLeaf(counter_name.c_str());
+    if (leaf == nullptr)
+      leaf = tree->FindLeaf(counter_name.c_str());
+    if (leaf == nullptr)
+      throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested counter branch " + counter_name + "!!!" );
+
+    const std::string ctype = leaf->GetTypeName();
+    if (ctype == "Int_t")
+      this->counter = 0;
+    else if (ctype == "UInt_t")
+      this->counter = 0u;
+
     tree->SetBranchStatus(counter_name.c_str(), 1);
-    tree->SetBranchAddress(counter_name.c_str(), &(this->counter), &counter_branch);
+    std::visit([this] (auto &counter) {
+        tree->SetBranchAddress(this->counter_name.c_str(), &counter, &this->counter_branch);
+      }, this->counter);
     counter_branch->SetAutoDelete(false);
   }
 
@@ -115,14 +133,14 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     if (branch_name == "")
       continue;
 
-    // experimenting with automatic type readout
+    // retype branch based on type found in file
     auto leaf = tree->GetLeaf(branch_name.c_str());
     if (leaf == nullptr)
       leaf = tree->FindLeaf(branch_name.c_str());
     if (leaf == nullptr)
-      throw std::runtime_error( std::string("ERROR: Collection::associate: unable to find the requested branch ") + branch_name + "!!!" );
+      throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested branch " + branch_name + "!!!" );
 
-    std::string btype = leaf->GetTypeName();
+    const std::string btype = leaf->GetTypeName();
     if (btype == "Int_t")
       Group<Ts...>::template retype<int>(this->v_data[iB]);
     else if (btype == "UInt_t")
@@ -142,7 +160,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     else if (btype == "UChar_t")
       Group<Ts...>::template retype<unsigned char>(this->v_data[iB]);
     else
-      throw std::runtime_error( std::string("ERROR: Collection::associate: branch ") + branch_name + "has an unsupported type " + btype
+      throw std::runtime_error( "ERROR: Collection::associate: branch " + branch_name + "has an unsupported type " + btype
                                 + "!!! If it should have been supported, please add it and/or contact the developer.");
 
     tree->SetBranchStatus(branch_name.c_str(), 1);
@@ -162,9 +180,25 @@ void Framework::Collection<Ts...>::reassociate()
     throw std::runtime_error( "ERROR: Collection::reassociate: the associated tree is null." 
                               "Perhaps Collection::associate has not been called? Aborting!!" );
 
+  // reset to default all branches that disappear in the current file
+  for (int iD = 0; iD < this->v_data.size(); ++iD) {
+    auto &[branch_name, branch] = v_branch[iD];
+    if (branch_name != "" and branch == nullptr) {
+      // maybe better to default only the value, and not the type
+      // in order to keep the file-based typing in associate() to be the last retype() call
+      //std::visit([this, iD] (auto &def) { Group<Ts...>::template retype<decltype(def)>(this->v_data[iD]); }, v_default[iD]);
+
+      std::visit([capacity = this->v_index.capacity()] (auto &vec, auto &def) {
+          for (int iv = 0; iv < capacity; ++iv)
+            vec[iv] = def;
+        }, this->v_data[iD], v_default[iD]);
+    }
+  }
+
   if (counter_name == "")
     return;
 
+  // allocate memory as needed according to the current file
   TLeaf *leaf = tree->GetLeaf(counter_name.c_str());
   auto current_max = leaf->GetMaximum();
   if (current_max > this->v_index.capacity()) {
@@ -190,17 +224,19 @@ void Framework::Collection<Ts...>::populate(long long entry)
   // get the number of elements and fill up indices
   if (counter_branch != nullptr) {
     counter_branch->GetEntry(entry);
-    this->selected = this->counter;
-
     this->v_index.clear();
-    for (int iD = 0; iD < this->counter; ++iD)
-      this->v_index.emplace_back(iD);
+
+    std::visit([this] (auto &counter) {
+        this->selected = counter;
+        for (int iD = 0; iD < counter; ++iD)
+          this->v_index.emplace_back(iD);
+      }, this->counter);
   }
   else if (!this->v_attr.empty()) {
     this->v_index.clear();
     this->v_index.emplace_back(0);
     this->counter = 1;
-    this->selected = this->counter;
+    this->selected = std::get<int>(this->counter);
   }
 
   // and then get the data of all the branches

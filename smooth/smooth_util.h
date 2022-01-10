@@ -9,7 +9,7 @@
 
 #include "TKey.h"
 
-#include "make_histogram.h"
+#include "misc/make_histogram.h"
 #include "fit_util.h"
 
 auto bandwidth_to_test(const std::vector<std::vector<double>> &edges, const std::vector<double> &fixed_bandwidth = {})
@@ -111,13 +111,11 @@ auto apply_deviation(const Arrayhist &nominal, const Arrayhist &deviation, doubl
 
 /// fit a plane to a list of points
 /// ensure that the workspace is at least as large as the entire template
-std::vector<std::array<double, 2>> fit_plane(const std::vector<int> &bins, const Arrayhist &reldev,
-                                             const std::vector<std::vector<double>> &edges, Workspace &wsp)
+std::vector<std::array<double, 2>> fit_plane_index(const std::vector<int> &bins, const Arrayhist &reldev,
+                                                   const std::vector<std::vector<double>> &edges, Workspace &wsp)
 {
   const int nvar = edges.size();
-  std::vector<int> idx1(nvar, -1);
-  for (int iv = 0; iv < nvar; ++iv)
-    idx1[iv] = index_1n(bins[0], iv, edges);
+  const auto idx1 = index_1n(bins[0], edges);
   const double rdev1 = reldev(bins[0], 0);
 
   // count the number of valid points to be included in the fit
@@ -258,22 +256,6 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
     return sum;
   };
 
-  const bool samebw = (bandwidth_h == bandwidth_l);
-  std::vector<int> icenter(nvar, -1), idxn(nvar, -1);
-
-  std::vector<int> plane_h = {}, plane_l = {};
-  std::vector<std::array<double, 2>> smooth_h = {}, smooth_l = {};
-  plane_h.reserve(nbin);
-  smooth_h.reserve(nbin);
-
-  plane_l.reserve(nbin);
-  smooth_l.reserve(nbin);
-
-  auto rdev_sm_h = Arrayhist(nbin), rdev_sm_l = Arrayhist(nbin);
-
-  auto sums_h = std::vector<double>(nbin, 0.), sums_l = std::vector<double>(nbin, 0.);
-  auto sum2s_h = sums_h, sum2s_l = sums_l;
-
   auto f_update_rdev = [] (const std::vector<int> &plane, const std::vector<std::array<double, 2>> &smooth,
                            Arrayhist &rdev, std::vector<double> &sums, std::vector<double> &sum2s,
                            const std::vector<std::vector<double>> &edges) {
@@ -283,13 +265,10 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
     rdev(plane[0], 0) += smooth[0][0];
     rdev(plane[0], 1) += smooth[0][1];
 
-    std::vector<int> idxn1(edges.size(), -1), idxn2(edges.size(), -1);
-    for (int iv = 0; iv < edges.size(); ++iv)
-      idxn1[iv] = index_1n(plane[0], iv, edges);
+    const auto idxn1 = index_1n(plane[0], edges);
 
     for (int ipl = 1; ipl < plane.size(); ++ipl) {
-      for (int iv = 0; iv < edges.size(); ++iv)
-        idxn2[iv] = index_1n(plane[ipl], iv, edges);
+      const auto idxn2 = index_1n(plane[ipl], edges);
 
       double wgt = weight(idxn1, idxn2, edges);
       sums[plane[ipl]] += wgt;
@@ -300,11 +279,24 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
     }
   };
 
+  std::vector<int> plane_h = {}, plane_l = {};
+  std::vector<std::array<double, 2>> smooth_h = {}, smooth_l = {};
+  plane_h.reserve(nbin);
+  smooth_h.reserve(nbin);
+
+  plane_l.reserve(nbin);
+  smooth_l.reserve(nbin);
+
+  const bool samebw = (bandwidth_h == bandwidth_l);
+
+  auto rdev_sm_h = Arrayhist(nbin), rdev_sm_l = Arrayhist(nbin);
+
+  auto sums_h = std::vector<double>(nbin, 0.), sums_l = std::vector<double>(nbin, 0.);
+  auto sum2s_h = sums_h, sum2s_l = sums_l;
+
   for (int ibin = 0; ibin < nbin; ++ibin) {
     // get all the points within bandwidth centered around current bin
-    for (int iv = 0; iv < nvar; ++iv)
-      icenter[iv] = index_1n(ibin, iv, fine_edges);
-
+    const auto icenter = index_1n(ibin, fine_edges);
     plane_h.emplace_back(ibin);
     plane_l.emplace_back(ibin);
 
@@ -314,10 +306,10 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
 
       bool withinbw_h = true, withinbw_l = true;
       for (int iv = 0; iv < nvar; ++iv) {
-        idxn[iv] = index_1n(ib, iv, fine_edges);
+        const int idxn = index_1n(ib, iv, fine_edges);
 
-        withinbw_h = withinbw_h and std::abs(icenter[iv] - idxn[iv]) <= bandwidth_h[iv];
-        withinbw_l = !samebw and withinbw_l and std::abs(icenter[iv] - idxn[iv]) <= bandwidth_l[iv];
+        withinbw_h = withinbw_h and std::abs(icenter[iv] - idxn) <= bandwidth_h[iv];
+        withinbw_l = !samebw and withinbw_l and std::abs(icenter[iv] - idxn) <= bandwidth_l[iv];
       }
       if (samebw)
         withinbw_l = withinbw_h;
@@ -330,13 +322,13 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
     }
 
     // dump into list of smooth planes
-    smooth_h = fit_plane(plane_h, rdev_tr_h, fine_edges, wsp);
+    smooth_h = fit_plane_index(plane_h, rdev_tr_h, fine_edges, wsp);
 
     // build the smooth relative deviation as the weighted average of the smooth planes
     f_update_rdev(plane_h, smooth_h, rdev_sm_h, sums_h, sum2s_h, fine_edges);
 
     if (not oneside and not (samebw and symmetrize)) {
-      smooth_l = fit_plane(plane_l, rdev_tr_l, fine_edges, wsp);
+      smooth_l = fit_plane_index(plane_l, rdev_tr_l, fine_edges, wsp);
       f_update_rdev(plane_l, smooth_l, rdev_sm_l, sums_l, sum2s_l, fine_edges);
     }
     else
@@ -424,18 +416,14 @@ void load_snapshot(const std::tuple<
     }
   }
 
-  auto kh = ss->FindKey(((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str());
-  auto kl = (oneside) ? nullptr : ss->FindKey((bw + systematic + "_down_cv_chi2").c_str());
-  auto kp = ss->FindKey((std::string("npartition") + to_str(npartition) + "_times_nrepeatcv").c_str());
-  if (kh == nullptr or (not oneside and kl == nullptr) or kp == nullptr) {
+  auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( ((oneside) ? bw + systematic + "_cv_chi2" : bw + systematic + "_up_cv_chi2").c_str() ));
+  auto cl = (oneside) ? nullptr : std::unique_ptr<TH1D>(ss->Get<TH1D>( (bw + systematic + "_down_cv_chi2").c_str() ));
+  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( ("npartition"s + to_str(npartition) + "_times_nrepeatcv").c_str() ));
+  if (ch == nullptr or (not oneside and cl == nullptr) or np == nullptr) {
     std::cout << "Snapshot file not compatible with the current smoothing routine. Either the required histograms aren't present "
       "or the number of partitions used isn't the same between the runs." << std::endl;
     return;
   }
-
-  auto ch = std::unique_ptr<TH1D>(ss->Get<TH1D>( kh->GetName() ));
-  auto cl = (oneside) ? nullptr : std::unique_ptr<TH1D>(ss->Get<TH1D>( kl->GetName() ));
-  auto np = std::unique_ptr<TH1D>(ss->Get<TH1D>( kp->GetName() ));
 
   if (ch->GetNbinsX() != chi2s_h.size() or (not oneside and cl->GetNbinsX() != chi2s_l.size())) {
     std::cout << "Number of chi2 is not compatible with the current number of tested bandwidth hypotheses." << std::endl;
@@ -448,6 +436,19 @@ void load_snapshot(const std::tuple<
   }
 
   istart = np->GetBinContent(1);
+}
+
+
+
+auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const std::vector<std::vector<double>> &edges, int idim)
+{
+  Arrayhist hist(bandwidths.size());
+  for (int ibw = 0; ibw < bandwidths.size(); ++ibw) {
+    hist(ibw, 0) = double(bandwidths[ibw][idim]) / (edges[idim].size() - 1);
+    hist(ibw, 1) = 0.;
+  }
+
+  return hist;
 }
 
 
@@ -855,7 +856,7 @@ void smooth_templates(const std::vector<std::string> &files,
   auto fvary_h = files;
   if (type == "tree") {
     for (auto &file : fvary_h)
-      replace(file, ".root", (oneside) ? std::string("_") + systematic + ".root" : std::string("_") + systematic + "_up.root");
+      replace(file, ".root", (oneside) ? "_"s + systematic + ".root" : "_"s + systematic + "_up.root");
   }
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);

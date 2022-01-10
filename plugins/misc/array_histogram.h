@@ -13,8 +13,13 @@
 
 class Arrayhist {
 public:
-  Arrayhist() = delete;
-  Arrayhist(int nbin_) : nbin(nbin_), hist(std::make_unique<double[]>(2 * nbin)) {}
+  Arrayhist() : nbin(0) {}
+  Arrayhist(int nbin_) : nbin(nbin_) {
+    if (nbin > 0)
+      hist = std::make_unique<double[]>(2 * nbin);
+    else
+      nbin = 0;
+  }
   Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
 
   /*/ copy ctor, commented because not needed, but kept for reference
@@ -26,7 +31,7 @@ public:
   }
 
   // copy assign, commented because not needed, but kept for reference
-  Arrayhist& operator=(const Arrayhist& ah) {
+  Arrayhist& operator=(const Arrayhist &ah) {
     nbin = ah.nbin;
     for (int ibin = 0; ibin < nbin; ++ibin) {
       hist[ibin] = ah(ibin, 0);
@@ -36,7 +41,7 @@ public:
     return *this;
   }*/
 
-  Arrayhist& operator=(Arrayhist&& ah) {
+  Arrayhist& operator=(Arrayhist &&ah) {
     nbin = ah.nbin;
     std::swap(hist, ah.hist);
     return *this;
@@ -45,6 +50,14 @@ public:
   double& operator()(int ibin, bool variance) { return hist[ibin + (variance * nbin)]; }
   const double& operator()(int ibin, bool variance) const { return hist[ibin + (variance * nbin)]; }
   int size() const { return nbin; }
+
+  void initialize(int nbin_) {
+    if (nbin != 0)
+      return;
+
+    nbin = nbin_;
+    hist = std::make_unique<double[]>(2 * nbin);
+  }
 
   double sumw() const {
     double sum = 0.;
@@ -105,6 +118,18 @@ int index_1n(int idx1, int dim, const std::vector<std::vector<double>> &edges)
 
 
 
+/// as above, but over all dimensions in a go
+std::vector<int> index_1n(int idx1, const std::vector<std::vector<double>> &edges)
+{
+  std::vector<int> idxn(edges.size(), -1);
+  for (int iv = 0; iv < edges.size(); ++iv)
+    idxn[iv] = index_1n(idx1, iv, edges);
+
+  return idxn;
+}
+
+
+
 std::vector<double> center(int idx1, const std::vector<std::vector<double>> &edges)
 {
   std::vector<double> result(edges.size(), std::numeric_limits<double>::max());
@@ -114,6 +139,41 @@ std::vector<double> center(int idx1, const std::vector<std::vector<double>> &edg
   }
 
   return result;
+}
+
+
+
+std::vector<std::vector<double>> centers_of(const std::vector<std::vector<double>> &edges)
+{
+  std::vector<std::vector<double>> centers(edges.size());
+  for (int iv = 0; iv < edges.size(); ++iv) {
+    std::vector<double> center(edges[iv].size() - 1, std::numeric_limits<double>::max());
+    for (int ib = 0; ib < edges[iv].size() - 1; ++ib)
+      center[ib] = 0.5 * (edges[iv][ib] + edges[iv][ib + 1]);
+
+    centers.emplace_back(center);
+  }
+
+  return centers;
+}
+
+
+
+std::vector<std::vector<double>> edges_of(const std::vector<std::vector<double>> &centers)
+{
+  std::vector<std::vector<double>> edges(centers.size());
+  for (int iv = 0; iv < centers.size(); ++iv) {
+    std::vector<double> edge(centers[iv].size() + 1, std::numeric_limits<double>::max());
+    edge[0] = centers[iv][0] - (0.5 * (centers[iv][1] - centers[iv][0]));
+
+    for (int ib = 1; ib < centers[iv].size(); ++ib)
+      edge[ib] = 0.5 * (centers[iv][ib] + centers[iv][ib - 1]);
+
+    edge.back() = centers[iv].back() + (0.5 * (centers[iv].back() - centers[iv][centers[iv].size() - 2]));
+    edges.emplace_back(edge);
+  }
+
+  return edges;
 }
 
 
@@ -221,42 +281,6 @@ auto divide(const Arrayhist &h1, const Arrayhist &h2, bool exact1 = false, bool 
   }
 
   return result;
-}
-
-
-
-/// some converter methods for snapshotting
-auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const std::vector<std::vector<double>> &edges, int idim)
-{
-  Arrayhist hist(bandwidths.size());
-  for (int ibw = 0; ibw < bandwidths.size(); ++ibw) {
-    hist(ibw, 0) = double(bandwidths[ibw][idim]) / (edges[idim].size() - 1);
-    hist(ibw, 1) = 0.;
-  }
-
-  return hist;
-}
-
-
-
-/// make a single histogram with nvar bins
-/// and each bin i has a content of nbin of ith variable
-Arrayhist nbin_hist(const std::tuple<
-                    std::vector<std::vector<std::string>>,
-                    std::vector<std::vector<double>>,
-                    std::vector<std::vector<double>>,
-                    std::string> &variables_bins)
-{
-  const auto &bins = std::get<1>(variables_bins);
-  const int nvar = bins.size();
-
-  Arrayhist hist(nvar);
-  for (int iv = 0; iv < nvar; ++iv) {
-    hist(iv, 0) = bins[iv].size() - 1;
-    hist(iv, 1) = 0.;
-  }
-
-  return hist;
 }
 
 

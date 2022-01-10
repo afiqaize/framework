@@ -18,7 +18,7 @@ std::vector<std::string> file_by_ext(const std::string &dir, const std::string &
 
   // which really relies on ROOT's ability to run shell commands aha
   const std::string ext = (exp[0] == '.') ?  " -type f -name '*" + exp + "'"  : " -type f -name '" + exp + "'";
-  TString allfile = gSystem->GetFromPipe(("find " + dir + ext).c_str());
+  TString allfile = gSystem->GetFromPipe(("find " + dir + ext + " | sort -u").c_str());
   TString file;
   Ssiz_t index = 0;
 
