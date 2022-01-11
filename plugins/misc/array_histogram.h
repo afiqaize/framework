@@ -13,16 +13,16 @@
 
 class Arrayhist {
 public:
+  /// constructor
   Arrayhist() : nbin(0) {}
+
   Arrayhist(int nbin_) : nbin(nbin_) {
     if (nbin > 0)
       hist = std::make_unique<double[]>(2 * nbin);
     else
       nbin = 0;
   }
-  Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
 
-  /*/ copy ctor, commented because not needed, but kept for reference
   Arrayhist(const Arrayhist &ah) : nbin(ah.nbin) {
     for (int ibin = 0; ibin < nbin; ++ibin) {
       hist[ibin] = ah(ibin, 0);
@@ -30,7 +30,9 @@ public:
     }
   }
 
-  // copy assign, commented because not needed, but kept for reference
+  Arrayhist(Arrayhist &&ah) : nbin(ah.nbin) { std::swap(hist, ah.hist); }
+
+  /// assignment
   Arrayhist& operator=(const Arrayhist &ah) {
     nbin = ah.nbin;
     for (int ibin = 0; ibin < nbin; ++ibin) {
@@ -39,13 +41,9 @@ public:
     }
 
     return *this;
-  }*/
-
-  Arrayhist& operator=(Arrayhist &&ah) {
-    nbin = ah.nbin;
-    std::swap(hist, ah.hist);
-    return *this;
   }
+
+  Arrayhist& operator=(Arrayhist &&ah) = default;
 
   double& operator()(int ibin, bool variance) { return hist[ibin + (variance * nbin)]; }
   const double& operator()(int ibin, bool variance) const { return hist[ibin + (variance * nbin)]; }

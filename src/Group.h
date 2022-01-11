@@ -48,10 +48,8 @@ namespace Framework {
     };
     using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
 
-    /// no default constructor
-    Group() = delete;
-
     /// constructor
+    Group() = delete;
     Group(const std::string &name_, int counter_);
 
     /// such that if (Group) is a well-defined expression
