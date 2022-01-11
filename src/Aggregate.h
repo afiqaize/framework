@@ -21,7 +21,6 @@ namespace Framework {
   class Aggregate : public Group<Ts...> {
   public:
     /// constructor
-    /// don't bother, use the one below
     Aggregate() = delete;
 
     /// give directly the collections that one will be using
@@ -92,7 +91,7 @@ namespace Framework {
     using type = Aggregate<N, Ts...>;
   };
 
-  /// factory function, deduction guide ain't cuttin it anymore
+  // factory function, deduction guide ain't cuttin it anymore
   template <typename ...Groups>
   typename aggregate_helper<sizeof...(Groups), typename tuple_union<Groups...>::type>::type
   make_aggregate(const std::string &name, int reserve, int init, Groups &...groups);

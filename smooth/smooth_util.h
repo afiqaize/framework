@@ -309,7 +309,7 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
         const int idxn = index_1n(ib, iv, fine_edges);
 
         withinbw_h = withinbw_h and std::abs(icenter[iv] - idxn) <= bandwidth_h[iv];
-        withinbw_l = !samebw and withinbw_l and std::abs(icenter[iv] - idxn) <= bandwidth_l[iv];
+        withinbw_l = not samebw and withinbw_l and std::abs(icenter[iv] - idxn) <= bandwidth_l[iv];
       }
       if (samebw)
         withinbw_l = withinbw_h;
@@ -371,8 +371,8 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
   double scale_h = snum_h / sden_h;
   double scale_l = snum_l / sden_l;
 
-  const double variance_h = 1. / std::sqrt(sden_h);
-  const double variance_l = 1. / std::sqrt(sden_l);
+  const double variance_h = 1. / sden_h;
+  const double variance_l = 1. / sden_l;
 
   //std::cout << "check symmetry scale " << scale_h << " " << scale_l << "\n";
   //std::cout << "check symmetry variance hi - lo " << variance_h - variance_l << "\n\n";
@@ -492,7 +492,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
   int npart = npartition * nrepeatcv;
   const bool runcv = npartition > 1 and npart > 1;
   std::vector<std::unique_ptr<TH1>> result;
-  if (!fixed_bandwidth.empty() and runcv) {
+  if (not fixed_bandwidth.empty() and runcv) {
     std::cerr << "Fixed bandwidth mode can only be ran with 1 partitions/bootstrapping i.e. without cross validation" << std::endl;
     return result;
   }
@@ -501,7 +501,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
   const auto &fine_edges = std::get<2>(variables_n);
   const int nvar = coarse_edges.size(), nfbin = count_nbin(fine_edges);
 
-  if (!fixed_bandwidth.empty() and fixed_bandwidth.size() != nvar) {
+  if (not fixed_bandwidth.empty() and fixed_bandwidth.size() != nvar) {
     std::cerr << "List of bandwidth must be as long as the list of variables in the fixed bandwidth mode" << std::endl;
     return result;
   }
@@ -849,7 +849,7 @@ void smooth_templates(const std::vector<std::string> &files,
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
   auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0], files, tree);
-  auto coll_n = make_collection(data_n, variables_n);
+  auto coll_n = make_collection(variables_n);
 
   // FIXME implement equiprobable binning and bin map editing here?
 
@@ -858,10 +858,11 @@ void smooth_templates(const std::vector<std::string> &files,
     for (auto &file : fvary_h)
       replace(file, ".root", (oneside) ? "_"s + systematic + ".root" : "_"s + systematic + "_up.root");
   }
+
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);
   auto variables_h = (type == "tree") ? variables_n : variables_and_binning(variables, weight[1], fvary_h, tree);
-  auto coll_h = make_collection(data_h, variables_h);
+  auto coll_h = make_collection(variables_h);
 
   auto fvary_l = fvary_h;
   if (not oneside and type == "tree") {
@@ -871,9 +872,9 @@ void smooth_templates(const std::vector<std::string> &files,
   Framework::Dataset<TChain> data_l("data_l", tree);
   data_l.set_files(fvary_l);
   auto variables_l = (type == "tree" or oneside) ? variables_n : variables_and_binning(variables, weight[2], fvary_l, tree);
-  auto coll_l = make_collection(data_l, variables_l);
+  auto coll_l = make_collection(variables_l);
 
-  if (!fixed_bandwidth.empty()) {
+  if (not fixed_bandwidth.empty()) {
     std::cout << "Fixed bandwidth mode detected. Ignoring --npartition and --nrepeatcv options..." << std::endl;
     npartition = 1;
     nrepeatcv = 1;

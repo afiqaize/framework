@@ -16,7 +16,6 @@ namespace Framework {
 
   public:
     /// constructor
-    /// no default constructor
     Collection() = delete;
 
     /// this is for single element collections
@@ -31,8 +30,15 @@ namespace Framework {
     /// that said, reallocating too often is not good for performance 
     Collection(const std::string &name_, const std::string &counter_name_, int reserve_, int init = 4);
 
+    Collection(const Collection &coll) = delete;
+    Collection(Collection &&coll) = default;
+
     /// destructor
-    ~Collection();
+    ~Collection() { detach(); }
+
+    /// assignment
+    Collection& operator=(const Collection &dat) = default;
+    Collection& operator=(Collection &&dat) = default;
 
     /// reserve the space for expected number of attributes
     void reserve(int attr);
