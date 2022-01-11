@@ -23,7 +23,7 @@ public:
     std::vector<std::vector<int>> seed_prescales;
   };
 
-  /// constructors
+  /// constructor
   Prescaler() = delete;
   Prescaler(const std::string &input, const std::vector<std::string> &keep = {}) : run(0), irun(0), lumi(0), ilumi(0) { initialize(input, keep); }
 
