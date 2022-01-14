@@ -23,16 +23,20 @@ namespace Framework {
   class Dataset {
   public:
     /// constructor
+    Dataset() = delete;
     Dataset(const std::string &name_, const std::string &tree_name_, 
             const std::string &tree_struct_ = "", char tree_delim_ = ' ', 
             const std::vector<std::string> &v_file_ = {});
 
-    Dataset(Dataset &&dat);
+    Dataset(const Dataset &dat) = delete;
+    Dataset(Dataset &&dat) = default;
 
     /// destructor
-    ~Dataset();
+    ~Dataset() { reset(); }
 
-    Dataset& operator=(Dataset &&dat);
+    /// assignment
+    Dataset& operator=(const Dataset &dat) = delete;
+    Dataset& operator=(Dataset &&dat) = default;
 
     /// setter methods
     void set_tree(const std::string &tree_name_);
@@ -97,8 +101,7 @@ namespace Framework {
 
   private:
     /// add the files to the Tree and evaluate entries
-    /// argument index can be 0 for evaluate everything, or -1 for evaluate only the last v_file element
-    void evaluate(int index = 0);
+    void evaluate();
 
     /// name of the tree
     std::string tree_name;
@@ -111,6 +114,9 @@ namespace Framework {
 
     /// filenames
     std::vector<std::string> v_file;
+
+    /// to re-evaluate only when file list is changed, regardless of associate calls
+    bool evaluated;
 
     /// ptr to the tree
     std::unique_ptr<Tree> tree_ptr;

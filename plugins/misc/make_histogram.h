@@ -134,7 +134,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
       }
 
       auto belem = is_elementary(part, unaries, binaries);
-      if (!belem.empty()) {
+      if (not belem.empty()) {
         unique_emplace(expressions, belem, exp, part);
         elem = is_elementary(exp, unaries, binaries);
         return true;
@@ -150,7 +150,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
         part = exp.substr(iop, (ipm2 < icl) ? ipm2 - iop : icl - iop);
 
         auto belem = is_elementary(part, unaries, binaries);
-        if (!belem.empty()) {
+        if (not belem.empty()) {
           unique_emplace(expressions, belem, exp, part);
           elem = is_elementary(exp, unaries, binaries);
           return true;
@@ -223,7 +223,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
         }
 
         // nope, carry on analyzing the insides for binaries
-        if (!decompose_binaries(expressions, exp, part, elem, iop1 + 1, icl)) {
+        if (not decompose_binaries(expressions, exp, part, elem, iop1 + 1, icl)) {
           // neither elementary unary or binary; can only be something like (variable)
           // just delete the brackets and move on
           exp.erase(icl, 1);
@@ -249,7 +249,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 /// second is the coarse binning information i.e. exactly as requested
 /// third is fine binning, i.e. coarse split into n bins along each dimension, n being dimension-specific
 /// in any case where anything is invalid, returned output is blank
-/// segfaults at dataset.analyze() if the source promotion is done within a make_collection for yet to be understood reasons
+/// segfaults at dataset.analyze() if the source promotion is done within make_collection for yet to be understood reasons
 auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight, const std::vector<std::string> &files, const std::string &tree)
 {
   using namespace Framework;
@@ -274,7 +274,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
     strip(ve[0]);
-    if (!valid_name(ve[0])) {
+    if (not valid_name(ve[0])) {
       std::cerr << "Invalid variable name " << ve[0] << ". Aborting. Current version considers only names containing " 
         "alphanumeric characters or underscores"<< std::endl;
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
@@ -396,8 +396,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
 
 
 /// prepare the collection to read the variables
-auto make_collection(Framework::Dataset<TChain> &dataset,
-                     const std::tuple<
+auto make_collection(const std::tuple<
                      std::vector<std::vector<std::string>>,
                      std::vector<std::vector<double>>,
                      std::vector<std::vector<double>>,
@@ -416,7 +415,6 @@ auto make_collection(Framework::Dataset<TChain> &dataset,
     else if (var.size() > 2 and var[1] == "__source__(")
       coll.add_attribute(var[0], var[2], 1.f);
   }
-  dataset.associate(coll);
 
   while (coll.n_attributes() != variables.size()) {
     for (const auto &var : variables) {
@@ -592,7 +590,7 @@ void make_histogram_set(const std::vector<std::string> &files,
   auto variables_bins = variables_and_binning(variables, weight, files, tree);
   Framework::Dataset<TChain> dataset("dataset", tree);
   dataset.set_files(files);
-  auto coll = make_collection(dataset, variables_bins);
+  auto coll = make_collection(variables_bins);
   auto histogram = count_and_bin(dataset, coll, variables_bins, 1, 1);
 
   const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"}},

@@ -16,10 +16,9 @@
 namespace Framework {
   class Tree {
   public:
-    /// no default constructor
+    /// constructor
     Tree() = delete;
 
-    /// constructor
     /// https://root.cern.ch/doc/master/Compression_8h_source.html
     /// main compression choices are 209 (size 39M, run time 4m 41s) or 505 (size 48M, run time 3m18s)
     /// note the whole run time including analysis (some 2M gen level) is counted in test

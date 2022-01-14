@@ -32,14 +32,6 @@ counter_branch(nullptr)
 
 
 template <typename ...Ts>
-Framework::Collection<Ts...>::~Collection()
-{
-  detach();
-}
-
-
-
-template <typename ...Ts>
 void Framework::Collection<Ts...>::reserve(int attr)
 {
   v_branch.reserve(attr);
