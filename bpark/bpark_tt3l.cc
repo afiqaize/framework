@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
   }
   //hlt.emplace_back("HLT_Ele32_WPTight_Gsf");
   //meta.add_attribute(hlt.back(), hlt.back(), true);
-  /*
+
   Collection<int, float> gen_particle("gen_particle", "nGenPart", 10, 256);
   gen_particle.add_attribute("gpmass", "GenPart_mass", 1.f);
   gen_particle.add_attribute("pt", "GenPart_pt", 1.f);
@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
 
       return mass;
     }, "dileptonic_ttbar", "gpmass", "pdg");
-  */
+
   Collection<int, float> electron("electron", "nElectron", 16, 16);
   electron.add_attribute("pt", "Electron_pt", 1.f);
   electron.add_attribute("eta", "Electron_eta", 1.f);
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
   muon.add_attribute("id_cutloose", "Muon_looseId", true);
   muon.add_attribute("gpf", "Muon_genPartFlav", std::numeric_limits<unsigned char>::max());
 
-  dat.associate(meta, /*gen_particle,*/ electron, muon);
+  dat.associate(meta, gen_particle, electron, muon);
 
   auto euu = make_aggregate("euu", 18, 1, electron, muon, muon);
   euu.set_indexer([] (auto &ge, auto &gu, auto &gb) -> std::vector<std::array<int, 3>> {
@@ -363,8 +363,8 @@ int main(int argc, char** argv) {
   hist_euu.make_histogram<TH2F>(filler_first_of(euu, "lb_deta", "lb_dphi"), "euu_lb_deta_dphi", ";lb deta;lb dphi", 24, 0.f, 6.f, 24, 0.f, pif);
 
   hist_euu.make_histogram<TH1F>(filler_first_of(euu, "eub_mass"), "euu_eub_mass", ";eub mass", 100, 0.f, 1000.f);
-  /*
-  Aggregate gen_llu("gen_llu", 22, 1, gen_particle, gen_particle, gen_particle);
+
+  auto gen_llu = make_aggregate("gen_llu", 22, 1, gen_particle, gen_particle, gen_particle);
   gen_llu.set_indexer([] (auto &g1, auto &, auto &)
                       -> std::vector<std::array<int, 3>> {
                         auto lepton = g1.filter_equal("dileptonic_ttbar", 8);
@@ -584,8 +584,7 @@ int main(int argc, char** argv) {
                         "gen_particle::pt", "gen_particle::eta", "gen_particle::phi", "gen_particle::mass",
                         "gen_particle::pt", "gen_particle::eta", "gen_particle::phi", "gen_particle::mass",
                         "gen_particle::pt", "gen_particle::eta", "gen_particle::phi", "gen_particle::mass");
-
-
+  /*
   Histogram hist_llu;
   hist_llu.make_histogram<TH1F>(filler_first_of(gen_llu, "lb_correct_charge"), "gen_llu_lb_correct_charge", ";charge", 5, -2.5f, 2.5f);
   hist_llu.make_histogram<TH1F>(filler_first_of(gen_llu, "lb_correct_mass"), "gen_llu_lb_correct_mass", ";mass", 60, 0.f, 300.f);
@@ -632,7 +631,6 @@ int main(int argc, char** argv) {
   hist_llu.make_histogram<TH1F>(filler_first_of(gen_llu, "llb_pt"), "gen_llu_llb_pt", "", 60, 0.f, 300.f);
   hist_llu.make_histogram<TH1F>(filler_first_of(gen_llu, "llb_rapidity"), "gen_llu_llb_rapidity", "", 80, -4.f, 4.f);
   */
-  /*
   Tree tree_llu("tree_smtt_bpark_llu.root", "tree");
   tree_llu.make_single_branches(gen_llu, 
                                 "lb_correct_charge", "lb_correct_mass", "lb_correct_pt", "lb_correct_rapidity",
@@ -643,9 +641,9 @@ int main(int argc, char** argv) {
                                 "ll_mass", "ll_pt", "ll_rapidity",
                                 "ll_deta", "ll_dphi",
                                 "llb_mass", "llb_pt", "llb_rapidity");
-  //tree_llu.make_array_branches(gen_particle, "mass", "pt", "eta", "phi", "pdg", "dileptonic_ttbar");
+  tree_llu.make_array_branches(gen_particle, "mass", "pt", "eta", "phi", "pdg", "dileptonic_ttbar");
   tree_llu.make_array_branches(muon, "pt", "gpf");
-  */
+
   /*/ FIXME finish this
   Aggregate gr_llu("gr_llu", 22, 1, gen_llu, euu, gen_llu, euu, gen_llu, euu);
   gr_llu.set_indexer([] (auto &gen, auto &reco, auto &, auto &) -> std::vector<std::array<int, 6>> {
@@ -666,16 +664,16 @@ int main(int argc, char** argv) {
   //auto printer = [] (auto &p) {std::cout << int(p) << "\n";};
 
   std::array<int, 2> pass_trigger_3l = {0, 0};
-  auto f_analyze = [&pass_trigger_3l, &hlt, &meta, /*&gen_particle,*/ &electron, &muon, &euu, &hist_euu/*, &gen_llu, &hist_llu*//*, &tree_llu*/] 
+  auto f_analyze = [&pass_trigger_3l, &hlt, &meta, &gen_particle, &electron, &muon, &euu, &hist_euu, &gen_llu, /*&hist_llu,*/ &tree_llu] 
     (long long entry) {
     meta.populate(entry);
 
-    /*gen_particle.populate(entry);
+    gen_particle.populate(entry);
     gen_llu.populate(entry);
     if (gen_llu.n_elements()) {
-      hist_llu.fill();
-      //tree_llu.fill();
-    }*/
+      //hist_llu.fill();
+      tree_llu.fill();
+    }
 
     bool pass_trigger = false;
     for (auto &path : hlt) {
@@ -717,7 +715,7 @@ int main(int argc, char** argv) {
   std::cout << pass_trigger_3l[0] << " pass trigger\n";
   std::cout << pass_trigger_3l[1] << " also contain euu triplet" << std::endl;
 
-  //tree_llu.save();
+  tree_llu.save();
   save_all_as("hist_smtt_bpark.root", /*hist_llu,*/ hist_euu);
 
   return 0;
