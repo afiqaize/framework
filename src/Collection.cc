@@ -224,24 +224,19 @@ void Framework::Collection<Ts...>::populate(long long entry)
           this->v_index.emplace_back(iD);
       }, this->counter);
   }
-  else if (!this->v_attr.empty()) {
+  else if (not this->v_attr.empty()) {
     this->v_index.clear();
     this->v_index.emplace_back(0);
     this->counter = 1;
     this->selected = std::get<int>(this->counter);
   }
+  this->ordered = true;
 
-  // and then get the data of all the branches
+  // then get the data of all the attributes
   for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_branch[iD].second == nullptr)
-      continue;
-
-    v_branch[iD].second->GetEntry(entry);
-  }
-
-  // functional transformations can only run after everything else is populated
-  for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_branch[iD].second == nullptr and this->v_attr[iD].second)
+    if (v_branch[iD].second != nullptr)
+      v_branch[iD].second->GetEntry(entry);
+    else if (this->v_attr[iD].second)
       this->v_attr[iD].second();
   }
 }

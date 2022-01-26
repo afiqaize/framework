@@ -74,11 +74,6 @@ namespace Framework {
     /// and the indices that are made by the above
     std::vector<std::array<int, N>> v_indices;
 
-    /// flag for each attribute whether it is external or internal
-    /// external 1 are attributes that are transformed from groups' underlying attributes
-    /// internal 0 are attributes transformed from this aggregate's external attributes
-    std::vector<bool> v_flag;
-
     /// references to the groups
     std::array<std::reference_wrapper<Group<Ts...>>, N> v_group;
   };

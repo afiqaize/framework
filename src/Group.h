@@ -281,6 +281,10 @@ namespace Framework {
     /// element indices in the group
     idxs v_index;
 
+    /// a flag indicating that the data is ordered i.e. indexed as 0, 1, ..., N in memory
+    /// needed to optimize reorder(), which is called by Tree for all branches
+    bool ordered;
+
     /// register of the currently available attributes
     /// first string is attribute alias
     /// second function is for the element-wise transformation from other attributes

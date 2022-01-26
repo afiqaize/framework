@@ -7,7 +7,8 @@ Framework::Group<Ts...>::Group(const std::string &name_, int counter_) :
 name(name_),
 counter(counter_),
 selected(counter_),
-v_index(this)
+v_index(this),
+ordered(false)
 {
   if (std::get<int>(counter) > 0) {
     for (int iC = 0; iC < std::get<int>(counter); ++iC)
@@ -349,6 +350,7 @@ bool Framework::Group<Ts...>::update_indices(const typename Framework::Group<Ts.
   for (auto idx : v_idx)
     v_index.emplace_back(idx);
   selected = v_index.size();
+  ordered = false;
 
   return selected > 0;
 }
@@ -595,13 +597,17 @@ int Framework::Group<Ts...>::inquire(const std::string &name) const noexcept
 template <typename ...Ts>
 void Framework::Group<Ts...>::reorder()
 {
-  for (int iS = 0; iS < selected; ++iS) {
-    if (iS != v_index[iS]) {
-      for (auto &dat : v_data)
-        std::visit([iS, iI = v_index[iS]] (auto &vec) {std::swap(vec[iS], vec[iI]);}, dat);
+  if (not ordered) {
+    for (int iS = 0; iS < selected; ++iS) {
+      if (iS != v_index[iS]) {
+        for (auto &dat : v_data)
+          std::visit([iS, iI = v_index[iS]] (auto &vec) {std::swap(vec[iS], vec[iI]);}, dat);
 
-      v_index[iS] = iS;
+        v_index[iS] = iS;
+      }
     }
+
+    ordered = true;
   }
 }
 
