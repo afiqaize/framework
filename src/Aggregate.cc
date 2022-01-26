@@ -43,7 +43,6 @@ void Framework::Aggregate<N, Ts...>::set_indexer(Indexer indexer_)
 template <std::size_t N, typename ...Ts>
 void Framework::Aggregate<N, Ts...>::reserve(int attr)
 {
-  v_flag.reserve(attr);
   Group<Ts...>::reserve(attr);
 }
 
@@ -127,7 +126,6 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
 
   this->v_attr.emplace_back(std::make_pair(attr, std::function<void()>(f_add)));
   this->v_data.emplace_back(std::vector<typename Traits::result_type>());
-  v_flag.emplace_back(true);
 
   std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
   return true;
@@ -140,7 +138,6 @@ template <typename Function, typename ...Attributes>
 bool Framework::Aggregate<N, Ts...>::transform_attribute(const std::string &attr, Function function, Attributes &&...attrs)
 {
   if (Group<Ts...>::transform_attribute(attr, function, std::forward<Attributes>(attrs)...)) {
-    v_flag.emplace_back(false);
     std::visit([init = this->v_index.capacity()] (auto &vec) {vec.reserve(init); vec.clear();}, this->v_data.back());
     return true;
   }
@@ -163,18 +160,11 @@ void Framework::Aggregate<N, Ts...>::populate(long long)
   this->v_index.clear();
   for (int iD = 0; iD < std::get<int>(this->counter); ++iD)
     this->v_index.emplace_back(iD);
+  this->ordered = true;
 
-  // first run the external attributes
-  for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_flag[iD])
+  // then run on the attributes
+  for (int iD = 0; iD < this->v_data.size(); ++iD)
       this->v_attr[iD].second();
-  }
-
-  // then internals after all externals have been populated
-  for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_flag[iD])
-      this->v_attr[iD].second();
-  }
 }
 
 
