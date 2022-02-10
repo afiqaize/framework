@@ -31,7 +31,6 @@ public:
   /// effective prescale is the probability of the event to be triggered; 1 - prod_i(1 - 1/N_i)
   /// with events passing a trigger with prescale N = HL (with H/L = hlt/l1 prescale) have a probability of 1/N to be triggered
   /// prescales are statistically independent from each other
-  /// due to ull usage for the bits, it can only take 64 paths/seeds for now
   double weight(int run_, int lumi_, const std::bitset<NPATH> &hltbits, const std::bitset<NSEED> &l1bits);
 
   /// get the hlt paths stored
