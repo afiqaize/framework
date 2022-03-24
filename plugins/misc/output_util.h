@@ -110,7 +110,8 @@ void save_all_as(const std::string &name, const Hists &...hists)
 {
   std::array<std::reference_wrapper<const std::vector<std::unique_ptr<TH1>>>, sizeof...(hists)> refs = { std::cref(hists)... };
 
-  auto file = std::make_unique<TFile>(name.c_str(), "recreate");
+  // create smallest possible file
+  auto file = std::make_unique<TFile>(name.c_str(), "recreate", "", 209);
   file->cd();
 
   for (const auto &ref : refs) {
