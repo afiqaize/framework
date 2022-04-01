@@ -105,7 +105,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 {
   static const std::vector<std::string> unaries = {"exp(", "log(", "log10(",
                                                    "sin(", "cos(", "tan(", "asin(", "acos(", "atan(",
-                                                   "sqrt(", "abs(", "negate(", "invert("};
+                                                   "sqrt(", "abs(", "negate(", "relu(", "invert("};
   static const std::vector<std::string> binaries = {"*", "/", "+", "-"};
 
   // decompose expressions like a + b + c + d + e -> f + c + d + e -> g + d + e -> h + e...
@@ -448,6 +448,8 @@ auto make_collection(const std::tuple<
             coll.transform_attribute(var[0], [] (double x) {return std::abs(x);}, var[2]);
           else if (var[1] == "negate(")
             coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
+          else if (var[1] == "relu(")
+            coll.transform_attribute(var[0], [] (double x) {return std::max(0., x);}, var[2]);
           else if (var[1] == "invert(")
             coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
           else if (var[1] == "__promote__(")
