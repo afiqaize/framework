@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
                                       + "for fixed/variable binning respectively. "
                                       + "expressions like 'c = <expression> : binning', can also be used. "
                                       + "accepted expressions are unary operations 'op(a)' or binary operations 'a op b'. "
-                                      + "supported unary operations: exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate and invert. "
+                                      + "supported unary operations: exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate, relu and invert. "
                                       + "supported binary operations: +, -, * and /. "
                                       + "variables and expressions are interpreted as floating-point. "
                                       + "under- and overflows are automatically added to the first and last bins respectively. "
