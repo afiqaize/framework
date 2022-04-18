@@ -25,7 +25,12 @@ public:
 
   /// constructor
   Prescaler() = delete;
-  Prescaler(const std::string &input, const std::vector<std::string> &keep = {}) : run(0), irun(0), lumi(0), ilumi(0) { initialize(input, keep); }
+  Prescaler(const std::string &input, const std::vector<std::string> &keep = {}) : run(0), irun(0), lumi(0), ilumi(0) { initialize(input, keep); check(); }
+  Prescaler(const std::vector<std::string> &input, const std::vector<std::string> &keep = {}) : run(0), irun(0), lumi(0), ilumi(0) {
+    for (const auto &ii : input)
+      initialize(ii, keep);
+    check();
+  }
 
   /// find the weight of the event; weight = 1 / effective prescale
   /// effective prescale is the probability of the event to be triggered; 1 - prod_i(1 - 1/N_i)
@@ -52,6 +57,9 @@ private:
   /// something's wrong if this function is called
   /// don't crash the code though
   double scream(int run_, int lumi_);
+
+  /// validate that expected bitset is enough, and print some information
+  void check() const;
 
   /// the lookup table storing the info
   std::vector<std::pair<int, std::vector<std::pair<int, Data>>>> prescales;
@@ -90,14 +98,14 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
   }
 
   const auto &data = prescales[irun].second[ilumi].second;
-  std::vector<int> eps = {};
+  std::vector<int> eps = {}; // effective prescales
   for (int ipa = 0; ipa < data.path_indices.size(); ++ipa) {
     if (not hltbits[data.path_indices[ipa]])
       continue;
 
     const int pps = data.path_prescales[ipa];
 
-    std::vector<int> sps = {};
+    std::vector<int> sps = {}; // seed prescales
     for (int ise = 0; ise < data.seed_indices[ipa].size(); ++ise) {
       if (not l1bits[data.seed_indices[ipa][ise]])
         continue;
@@ -131,16 +139,36 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
   ifile >> ii;
 
   auto sort_by_key = [] (auto &p1, auto &p2) { return p1.first < p2.first; };
+  auto key_is_irun = [this] (const auto &p) { return p.first == irun; };
+  auto key_is_ilumi = [this] (const auto &p) { return p.first == ilumi; };
 
   // get the paths and seeds
   for (const auto &[srun, lumis] : ii.items()) {
     const json ll = lumis;
-    prescales.emplace_back(std::stoi(srun), std::vector<std::pair<int, Data>>{});
+
+    // check if the run is already there
+    // if yes, extend it, otherwise, make a new entry
+    irun = std::stoi(srun);
+    auto rps = std::find_if(std::begin(prescales), std::end(prescales), key_is_irun);
+
+    if (rps == std::end(prescales)) {
+      prescales.emplace_back(irun, std::vector<std::pair<int, Data>>{});
+      rps = std::find_if(std::begin(prescales), std::end(prescales), key_is_irun);
+    }
 
     for (const auto &[slumi, triggers] : ll.items()) {
       const json tt = triggers;
-      prescales.back().second.emplace_back( std::make_pair(std::stoi(slumi), Prescaler::Data{}) );
-      auto &data = prescales.back().second.back().second;
+
+      // check if the lumi is already there
+      // if yes, extend it, otherwise, make a new entry
+      ilumi = std::stoi(slumi);
+      auto lps = std::find_if(std::begin(rps->second), std::end(rps->second), key_is_ilumi);
+
+      if (lps == std::end(rps->second)) {
+        rps->second.emplace_back( std::make_pair(ilumi, Prescaler::Data{}) );
+        lps = std::find_if(std::begin(rps->second), std::end(rps->second), key_is_ilumi);
+      }
+      auto &data = lps->second;
 
       for (const auto &[path, prescale] : tt.items()) {
         bool tokeep = keep.empty();
@@ -150,39 +178,28 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
         if (not tokeep)
           continue;
 
-        data.path_indices.emplace_back(index(path, paths));
-        data.path_prescales.emplace_back(prescale["hlt_prescale"]);
+        const int ipa = index(path, paths);
+        if (std::count(std::begin(data.path_indices), std::end(data.path_indices), ipa) == 0) {
+          data.path_indices.emplace_back(ipa);
+          data.path_prescales.emplace_back(prescale["hlt_prescale"]);
 
-        data.seed_indices.emplace_back(std::vector<int>{});
-        for (const auto &seed : prescale["seeds"])
-          data.seed_indices.back().emplace_back(index(seed, seeds));
+          data.seed_indices.emplace_back(std::vector<int>{});
+          for (const auto &seed : prescale["seeds"])
+            data.seed_indices.back().emplace_back(index(seed, seeds));
 
-        data.seed_prescales.emplace_back(std::vector<int>{});
-        for (const auto &seed : prescale["seed_prescales"])
-          data.seed_prescales.back().emplace_back(seed);
+          data.seed_prescales.emplace_back(std::vector<int>{});
+          for (const auto &seed : prescale["seed_prescales"])
+            data.seed_prescales.back().emplace_back(seed);
+        }
       }
     }
 
     // lumi and run needs to be sorted, as they are arranged lexically
     // likely due to it being stored as string
     // the data within must NOT be sorted, otherwise indices will break
-    std::sort(std::begin(prescales.back().second), std::end(prescales.back().second), sort_by_key);
+    std::sort(std::begin(rps->second), std::end(rps->second), sort_by_key);
   }
   std::sort(std::begin(prescales), std::end(prescales), sort_by_key);
-
-  if (paths.size() > NPATH or seeds.size() > NSEED) {
-    std::cout << "Number of paths: " << paths.size() << "\n";
-    std::cout << "Number of seeds: " << seeds.size() << std::endl;
-    throw std::out_of_range( "ERROR: Prescaler is too small for the amount of paths and/or seeds! Use a larger Prescaler<npath, nseed> or constrain the paths list!!" );
-  }
-
-  std::cout << "Prescaler: prescale table initialized considering the following HLT paths: (" << paths.size() << ")\n";
-  for (const auto &path : paths)
-    std::cout << path << "\n";
-  std::cout << "\nand the following L1 seeds: (" << seeds.size() << ")\n";
-  for (const auto &seed : seeds)
-    std::cout << seed << "\n";
-  std::cout << "\nEnsure that the bit masks provided to weight() are in this order, with the first path/seed decision at the 2^0 bit." << std::endl;
 }
 
 
@@ -214,6 +231,26 @@ double Prescaler<NPATH, NSEED>::scream(int run_, int lumi_)
   ilumi = 0;
 
   return 0.;
+}
+
+
+
+template <size_t NPATH, size_t NSEED>
+void Prescaler<NPATH, NSEED>::check() const
+{
+  if (paths.size() > NPATH or seeds.size() > NSEED) {
+    std::cout << "Number of paths: " << paths.size() << "\n";
+    std::cout << "Number of seeds: " << seeds.size() << std::endl;
+    throw std::out_of_range( "ERROR: Prescaler is too small for the amount of paths and/or seeds! Use a larger Prescaler<npath, nseed> or constrain the paths list!!" );
+  }
+
+  std::cout << "Prescaler: prescale table initialized considering the following HLT paths: (" << paths.size() << ")\n";
+  for (const auto &path : paths)
+    std::cout << path << "\n";
+  std::cout << "\nand the following L1 seeds: (" << seeds.size() << ")\n";
+  for (const auto &seed : seeds)
+    std::cout << seed << "\n";
+  std::cout << "\nEnsure that the bit masks provided to weight() are in this order, with the first path/seed decision at the 2^0 bit." << std::endl;
 }
 
 #endif
