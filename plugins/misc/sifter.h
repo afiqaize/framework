@@ -21,11 +21,14 @@ public:
   /// remembers only unique paths - the rest are ignored
   void add(const std::vector<std::string> &paths_);
 
+  /// returns how many tiers are there
+  int ntier() const { return tiers.size(); };
+
   /// returns paths at a given tier
-  std::vector<std::string> paths_at_tier(int tier);
+  std::vector<std::string> paths_at_tier(int tier) const;
 
   /// decision whether or not to accept the path, based on the tier
-  bool accept(int tier, const std::bitset<NPATH> &bits);
+  bool accept(int tier, const std::bitset<NPATH> &bits) const;
 
 private:
   /// list of paths and number of paths corresponding to each tier
@@ -56,7 +59,7 @@ void Sifter<NPATH>::add(const std::vector<std::string> &paths_)
 
 
 template <size_t NPATH>
-std::vector<std::string> Sifter<NPATH>::paths_at_tier(int tier)
+std::vector<std::string> Sifter<NPATH>::paths_at_tier(int tier) const
 {
   if (tier >= tiers.size())
     return {};
@@ -68,7 +71,7 @@ std::vector<std::string> Sifter<NPATH>::paths_at_tier(int tier)
 
 
 template <size_t NPATH>
-bool Sifter<NPATH>::accept(int tier, const std::bitset<NPATH> &bits)
+bool Sifter<NPATH>::accept(int tier, const std::bitset<NPATH> &bits) const
 {
   if (tier >= tiers.size())
     return false;
