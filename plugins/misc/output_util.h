@@ -116,7 +116,8 @@ void save_all_as(const std::string &name, const Hists &...hists)
 
   for (const auto &ref : refs) {
     for (const auto &h : ref.get())
-      h->Write();
+      if (h->Write() == 0)
+        throw std::runtime_error( "ERROR: output_util::save_all_as: histogram is not writable. Aborting." );
   }
 }
 
