@@ -152,6 +152,7 @@ void Framework::Tree::fill()
 void Framework::Tree::save() const
 {
   file->cd();
-  ptr->Write();
+  if (ptr->Write() == 0)
+    throw std::runtime_error( "ERROR: Tree::save: tree is not writable. Aborting." );
 }
 

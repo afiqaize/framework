@@ -150,8 +150,10 @@ void Framework::Histogram::save_as(const std::string &name) const
   auto file = std::make_unique<TFile>(name.c_str(), "recreate");
   file->cd();
 
-  for (auto &hist : v_hist)
-    hist.first->Write();
+  for (auto &hist : v_hist) {
+    if (hist.first->Write() == 0)
+      throw std::runtime_error( "ERROR: Histogram::save_as: histogram is not writable. Aborting." );
+  }
 }
 
 
@@ -173,8 +175,10 @@ void Framework::save_all_as(const std::string &name, const Hists &...hists)
   file->cd();
 
   for (const auto &ref : refs) {
-    for (const auto &hist: ref.get())
-      hist.first->Write();
+    for (const auto &hist: ref.get()) {
+      if (hist.first->Write() == 0)
+        throw std::runtime_error( "ERROR: Histogram::save_all_as: histogram is not writable. Aborting." );
+    }
   }
 }
 
