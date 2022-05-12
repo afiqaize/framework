@@ -406,7 +406,7 @@ auto make_collection(const std::tuple<
 
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
-    throw std::runtime_error( "make_collection() :: an error is encountered. aborting." );
+    throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting." );
 
   Collection<float, double> coll("coll", variables.size());
   for (const auto &var : variables) {

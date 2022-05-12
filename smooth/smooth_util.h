@@ -835,16 +835,16 @@ void smooth_templates(const std::vector<std::string> &files,
                       const std::string &output)
 {
   if (systematic == "")
-    throw std::runtime_error( "smooth_templates() :: --systematic argument must be non-empty in --mode systematic or smooth." );
+    throw std::runtime_error( "ERROR: smooth_util::smooth_templates: --systematic argument must be non-empty in --mode systematic or smooth." );
 
   if (type == "weight") {
     if (not oneside and weight.size() != 3)
-      throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 3 if --type is weight. Aborting." );
+      throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 3 if --type is weight. Aborting." );
     else if (oneside and weight.size() != 2)
-      throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 2 if --type is weight and --one-side is used. Aborting." );
+      throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 2 if --type is weight and --one-side is used. Aborting." );
   }
   else if (weight.size() != 1)
-    throw std::runtime_error( "smooth_templates() :: number of weight expressions must be 1 if --type is tree. Aborting." );
+    throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 1 if --type is tree. Aborting." );
 
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
