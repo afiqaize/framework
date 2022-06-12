@@ -7,6 +7,7 @@
 #define FWK_FUNCTION_UTIL_H
 
 #include "../src/Heap.h"
+#include <bitset>
 
 /// a function that performs a simple copy of the argument
 template <typename T = float>
@@ -69,6 +70,40 @@ auto all_of() -> decltype(all_of_helper(std::make_index_sequence<N>{}))
 
 
 
+/// convert the bools into a bitset
+template <size_t N, typename ...Bools>
+std::bitset<N> to_bitset_impl(Bools ...bools)
+{
+  static_assert(N >= sizeof...(bools), "ERROR: to_bitset needs to be at least as large as the provided bools!!");
+
+  std::array<decltype((bools and ...)), sizeof...(bools)> vals = { bools... };
+  std::bitset<N> bits;
+
+  for (int ib = 0; ib < vals.size(); ++ib)
+    if (vals[ib])
+      bits.set(ib);
+
+  return bits;
+}
+
+
+
+template <size_t N, size_t ...A>
+auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename std::tuple_element_t<A, std::array<boolean, sizeof...(A)>>...)
+{
+  return to_bitset_impl<N, typename std::tuple_element_t<A, std::array<boolean, sizeof...(A)>>...>;
+}
+
+
+
+template <size_t A, size_t N = 128>
+auto to_bitset() -> decltype(to_bitset_helper<N>(std::make_index_sequence<A>{}))
+{
+  return to_bitset_helper<N>(std::make_index_sequence<A>{});
+}
+
+
+
 /// implementation of the apply_to<N, F>, refer to that for more info
 template <typename Number, size_t ...I, typename Function, size_t ...N>
 auto apply_to_impl(std::index_sequence<I...>, Function function, std::index_sequence<N...>)
@@ -114,10 +149,10 @@ auto apply_to(Function function)
 template <typename Arg1, typename Arg2, typename... Args>
 constexpr auto min(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-    if constexpr (sizeof...(args) == 0)
-                   return arg1 < arg2 ? arg1 : arg2;
-    else
-      return min(min(arg1, arg2), args...);
+  if constexpr (sizeof...(args) == 0)
+                 return arg1 < arg2 ? arg1 : arg2;
+  else
+    return min(min(arg1, arg2), args...);
 }
 
 
@@ -125,10 +160,10 @@ constexpr auto min(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 template <typename Arg1, typename Arg2, typename... Args>
 constexpr auto max(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-    if constexpr (sizeof...(args) == 0)
-                   return arg1 > arg2 ? arg1 : arg2;
-    else
-      return max(max(arg1, arg2), args...);
+  if constexpr (sizeof...(args) == 0)
+                 return arg1 > arg2 ? arg1 : arg2;
+  else
+    return max(max(arg1, arg2), args...);
 }
 
 #endif

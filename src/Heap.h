@@ -311,6 +311,24 @@ constexpr auto zip_1n(T1 &t1, const A2<T2, N> &a2)
 
 
 
+// https://stackoverflow.com/questions/670308/alternative-to-vectorbool
+class boolean {
+public:
+  boolean(): value() {}
+  boolean(bool value_) : value(value_) {}
+
+  operator bool() const {return value;}
+
+  /// the following operators are to allow bool *b = &v[0]; (v is a vector here)
+  bool* operator& () { return &value; }
+  const bool* operator& () const { return &value; }
+
+private:
+  bool value;
+};
+
+
+
 // literals
 using namespace std::string_literals;
 using namespace std::string_view_literals;
