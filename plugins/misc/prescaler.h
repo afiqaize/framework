@@ -70,9 +70,9 @@ private:
 
   /// tagging members so that the query happens every run/lumi change instead of every event
   int run;
-  int lumi;
-
   int irun;
+
+  int lumi;
   int ilumi;
 };
 
