@@ -91,7 +91,7 @@ std::bitset<N> to_bitset_impl(Bools ...bools)
 template <typename T, size_t N, size_t ...A>
 auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename std::tuple_element_t<A, std::array<T, sizeof...(A)>>...)
 {
-  return to_bitset_impl<N, typename std::tuple_element_t<A, std::array<boolean, sizeof...(A)>>...>;
+  return to_bitset_impl<N, typename std::tuple_element_t<A, std::array<T, sizeof...(A)>>...>;
 }
 
 
