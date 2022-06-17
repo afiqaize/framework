@@ -9,9 +9,9 @@
 
 #include <bitset>
 
-#include "json/json.hpp"
 #include "misc/container_util.h"
 #include "misc/string_io.h"
+#include "json/json.hpp"
 
 template <size_t NPATH = 128, size_t NSEED = NPATH>
 class Prescaler {
@@ -86,7 +86,7 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
     irun = index_with_key(prescales, run);
 
     if (irun < 0)
-      return scream(run, lumi);
+      return scream(run_, lumi_);
   }
 
   if (lumi_ != lumi) {
@@ -94,7 +94,7 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
     ilumi = index_greater_equal(prescales[irun].second, lumi);
 
     if (ilumi < 0)
-      return scream(run, lumi);
+      return scream(run_, lumi_);
   }
 
   const auto &data = prescales[irun].second[ilumi].second;
@@ -135,6 +135,9 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
   using json = nlohmann::json;
 
   std::ifstream ifile(input);
+  if (not ifile)
+    throw std::runtime_error( "ERROR: Prescaler fails to open the json file!!" );
+
   json ii;
   ifile >> ii;
 
