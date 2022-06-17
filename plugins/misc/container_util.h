@@ -47,7 +47,7 @@ int index_with_predicate(const std::vector<std::pair<Key, Value>> &vec, Predicat
 template <typename Key, typename Value, typename Inquiry>
 int index_greater_equal(const std::vector<std::pair<Key, Value>> &vec, const Inquiry &inq)
 {
-  return index_with_predicate(vec, [&inq] (const Key &key) { return key >= inq; });
+  return index_with_predicate(vec, [&inq] (const Key &key) { return inq >= key; });
 }
 
 
@@ -55,7 +55,7 @@ int index_greater_equal(const std::vector<std::pair<Key, Value>> &vec, const Inq
 template <typename Key, typename Value, typename Inquiry>
 int index_less_equal(const std::vector<std::pair<Key, Value>> &vec, const Inquiry &inq)
 {
-  return index_with_predicate(vec, [&inq] (const Key &key) { return key <= inq; });
+  return index_with_predicate(vec, [&inq] (const Key &key) { return inq <= key; });
 }
 
 

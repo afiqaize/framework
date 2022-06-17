@@ -87,6 +87,12 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
 
     if (irun < 0)
       return scream(run_, lumi_);
+
+    lumi = lumi_;
+    ilumi = index_greater_equal(prescales[irun].second, lumi);
+
+    if (ilumi < 0)
+      return scream(run_, lumi_);
   }
 
   if (lumi_ != lumi) {
