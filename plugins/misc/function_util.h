@@ -88,18 +88,18 @@ std::bitset<N> to_bitset_impl(Bools ...bools)
 
 
 
-template <size_t N, size_t ...A>
-auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename std::tuple_element_t<A, std::array<boolean, sizeof...(A)>>...)
+template <typename T, size_t N, size_t ...A>
+auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename std::tuple_element_t<A, std::array<T, sizeof...(A)>>...)
 {
   return to_bitset_impl<N, typename std::tuple_element_t<A, std::array<boolean, sizeof...(A)>>...>;
 }
 
 
 
-template <size_t A, size_t N = 128>
-auto to_bitset() -> decltype(to_bitset_helper<N>(std::make_index_sequence<A>{}))
+template <typename T, size_t A, size_t N = 128>
+auto to_bitset() -> decltype(to_bitset_helper<T, N>(std::make_index_sequence<A>{}))
 {
-  return to_bitset_helper<N>(std::make_index_sequence<A>{});
+  return to_bitset_helper<T, N>(std::make_index_sequence<A>{});
 }
 
 
