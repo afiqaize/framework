@@ -147,7 +147,8 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
   json ii;
   ifile >> ii;
 
-  auto sort_by_key = [] (auto &p1, auto &p2) { return p1.first < p2.first; };
+  auto sort_by_key_less = [] (auto &p1, auto &p2) { return p1.first < p2.first; };
+  auto sort_by_key_more = [] (auto &p1, auto &p2) { return p1.first > p2.first; };
   auto key_is_irun = [this] (const auto &p) { return p.first == irun; };
   auto key_is_ilumi = [this] (const auto &p) { return p.first == ilumi; };
 
@@ -206,9 +207,11 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
     // lumi and run needs to be sorted, as they are arranged lexically
     // likely due to it being stored as string
     // the data within must NOT be sorted, otherwise indices will break
-    std::sort(std::begin(rps->second), std::end(rps->second), sort_by_key);
+    // lumi is sorted in reverse so as to allow index_greater_equal to return the correct index
+    // i.e. the index with the largest key for which the current key is greater than or equal to it
+    std::sort(std::begin(rps->second), std::end(rps->second), sort_by_key_more);
   }
-  std::sort(std::begin(prescales), std::end(prescales), sort_by_key);
+  std::sort(std::begin(prescales), std::end(prescales), sort_by_key_less);
 }
 
 
