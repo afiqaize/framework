@@ -121,7 +121,7 @@ namespace electron_id {
   ROOT::VecOps::RVec<int> (*pass_cutbased)(const ROOT::VecOps::RVec<int>&) = &pass_id<cut::bitset_all<WP>>;
 
   template <int cut>
-  int individual_cut(const ROOT::VecOps::RVec<int> &bitmap)
+  ROOT::VecOps::RVec<int> individual_cut(const ROOT::VecOps::RVec<int> &bitmap)
   {
     using wp::nbit;
 
