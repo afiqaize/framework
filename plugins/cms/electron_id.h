@@ -9,6 +9,7 @@
 #include <limits>
 #include <bitset>
 
+#include "misc/function_util.h"
 #include "ROOT/RVec.hxx"
 
 namespace electron_id {
