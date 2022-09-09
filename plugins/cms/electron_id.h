@@ -36,18 +36,48 @@ namespace electron_id {
 
     constexpr int ncut = 10;
 
-    constexpr auto iseq_min_pt = std::integer_sequence<int, 0>{};
-    constexpr auto iseq_sc_eta = std::integer_sequence<int, 3>{};
-    constexpr auto iseq_deta_seed = std::integer_sequence<int, 6>{};
-    constexpr auto iseq_dphi_in = std::integer_sequence<int, 9>{};
-    constexpr auto iseq_sieie_5x5 = std::integer_sequence<int, 12>{};
-    constexpr auto iseq_hoe = std::integer_sequence<int, 15>{};
-    constexpr auto iseq_inve_over_invp = std::integer_sequence<int, 18>{};
-    constexpr auto iseq_relpfiso = std::integer_sequence<int, 21>{};
-    constexpr auto iseq_conv_veto = std::integer_sequence<int, 24>{};
-    constexpr auto iseq_miss_hit = std::integer_sequence<int, 27>{};
-    constexpr auto iseq_all_but_pfiso = std::integer_sequence<int, 0, 3, 6, 9, 12, 15, 18, 24, 27>{};
-    constexpr auto iseq_all = std::integer_sequence<int, 0, 3, 6, 9, 12, 15, 18, 21, 24, 27>{};
+    constexpr int icut_min_pt = 0;
+    constexpr int icut_sc_eta = 3;
+    constexpr int icut_deta_seed = 6;
+    constexpr int icut_dphi_in = 9;
+    constexpr int icut_sieie_5x5 = 12;
+    constexpr int icut_hoe = 15;
+    constexpr int icut_inve_over_invp = 18;
+    constexpr int icut_relpfiso = 21;
+    constexpr int icut_conv_veto = 24;
+    constexpr int icut_miss_hit = 27;
+
+    constexpr auto iseq_min_pt = std::integer_sequence<int, icut_min_pt>{};
+    constexpr auto iseq_sc_eta = std::integer_sequence<int, icut_sc_eta>{};
+    constexpr auto iseq_deta_seed = std::integer_sequence<int, icut_deta_seed>{};
+    constexpr auto iseq_dphi_in = std::integer_sequence<int, icut_dphi_in>{};
+    constexpr auto iseq_sieie_5x5 = std::integer_sequence<int, icut_sieie_5x5>{};
+    constexpr auto iseq_hoe = std::integer_sequence<int, icut_hoe>{};
+    constexpr auto iseq_inve_over_invp = std::integer_sequence<int, icut_inve_over_invp>{};
+    constexpr auto iseq_relpfiso = std::integer_sequence<int, icut_relpfiso>{};
+    constexpr auto iseq_conv_veto = std::integer_sequence<int, icut_conv_veto>{};
+    constexpr auto iseq_miss_hit = std::integer_sequence<int, icut_miss_hit>{};
+    constexpr auto iseq_all_but_pfiso = std::integer_sequence<int,
+                                                              icut_min_pt,
+                                                              icut_sc_eta,
+                                                              icut_deta_seed,
+                                                              icut_dphi_in,
+                                                              icut_sieie_5x5,
+                                                              icut_hoe,
+                                                              icut_inve_over_invp, 
+                                                              icut_conv_veto,
+                                                              icut_miss_hit>{};
+    constexpr auto iseq_all = std::integer_sequence<int,
+                                                    icut_min_pt,
+                                                    icut_sc_eta,
+                                                    icut_deta_seed,
+                                                    icut_dphi_in,
+                                                    icut_sieie_5x5,
+                                                    icut_hoe,
+                                                    icut_inve_over_invp,
+                                                    icut_relpfiso,
+                                                    icut_conv_veto,
+                                                    icut_miss_hit>{};
 
     template <int WP> constexpr int bitset_min_pt = bitset(WP, iseq_min_pt);
     template <int WP> constexpr int bitset_sc_eta = bitset(WP, iseq_sc_eta);
@@ -69,7 +99,7 @@ namespace electron_id {
     using cut::ncut;
     using wp::nbit;
 
-    ROOT::VecOps::RVec<int> rvec_passID(bitmap.size(), 0);
+    ROOT::VecOps::RVec<int> passID(bitmap.size(), 0);
     for (std::size_t ibit = 0ull; ibit < bitmap.size(); ++ibit) {
       bool pass_cuts = false;
 
@@ -78,10 +108,10 @@ namespace electron_id {
         pass_cuts = pass_cuts and (last_n<nbit>(bitmap[ibit] >> nshift) >= last_n<nbit>(bits >> nshift));
       }
 
-      rvec_passID[ibit] = pass_cuts;
+      passID[ibit] = pass_cuts;
     }
 
-    return rvec_passID;
+    return passID;
   }
 
   template <int WP>
@@ -89,6 +119,18 @@ namespace electron_id {
 
   template <int WP>
   ROOT::VecOps::RVec<int> (*pass_cutbased)(const ROOT::VecOps::RVec<int>&) = &pass_id<cut::bitset_all<WP>>;
+
+  template <int cut>
+  int individual_cut(const ROOT::VecOps::RVec<int> &bitmap)
+  {
+    using wp::nbit;
+
+    ROOT::VecOps::RVec<int> varcut(bitmap.size(), 0);
+    for (std::size_t ibit = 0ull; ibit < bitmap.size(); ++ibit)
+      varcut[ibit] = last_n<nbit>(bitmap[ibit] >> cut);
+
+    return varcut;
+  }
 }
 
 #endif
