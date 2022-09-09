@@ -3,8 +3,8 @@
 // short: utility handling (curently: cut based) electron IDs
 // note: RDF is just to allow compatibility, and won't be actually used
 
-#ifndef FWK_FUNCTION_UTIL_H
-#define FWK_FUNCTION_UTIL_H
+#ifndef FWK_ELECTRON_ID_H
+#define FWK_ELECTRON_ID_H
 
 #include <limits>
 #include <bitset>
