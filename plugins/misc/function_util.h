@@ -28,7 +28,7 @@ bool any_of_impl(Bools ...bools)
 
 
 
-template <size_t ...N>
+template <std::size_t ...N>
 auto any_of_helper(std::index_sequence<N...>) -> bool(*)(typename std::tuple_element_t<N, std::array<boolean, sizeof...(N)>>...)
 {
   return any_of_impl<typename std::tuple_element_t<N, std::array<boolean, sizeof...(N)>>...>;
@@ -36,7 +36,7 @@ auto any_of_helper(std::index_sequence<N...>) -> bool(*)(typename std::tuple_ele
 
 
 
-template <size_t N = 1>
+template <std::size_t N = 1>
 auto any_of() -> decltype(any_of_helper(std::make_index_sequence<N>{}))
 {
   return any_of_helper(std::make_index_sequence<N>{});
@@ -54,7 +54,7 @@ bool all_of_impl(Bools ...bools)
 
 
 
-template <size_t ...N>
+template <std::size_t ...N>
 auto all_of_helper(std::index_sequence<N...>) -> bool(*)(typename std::tuple_element_t<N, std::array<boolean, sizeof...(N)>>...)
 {
   return all_of_impl<typename std::tuple_element_t<N, std::array<boolean, sizeof...(N)>>...>;
@@ -62,7 +62,7 @@ auto all_of_helper(std::index_sequence<N...>) -> bool(*)(typename std::tuple_ele
 
 
 
-template <size_t N = 1>
+template <std::size_t N = 1>
 auto all_of() -> decltype(all_of_helper(std::make_index_sequence<N>{}))
 {
   return all_of_helper(std::make_index_sequence<N>{});
@@ -71,7 +71,7 @@ auto all_of() -> decltype(all_of_helper(std::make_index_sequence<N>{}))
 
 
 /// convert the bools into a bitset
-template <size_t N, typename ...Bools>
+template <std::size_t N, typename ...Bools>
 std::bitset<N> to_bitset_impl(Bools ...bools)
 {
   static_assert(N >= sizeof...(bools), "ERROR: to_bitset needs to be at least as large as the provided bools!!");
@@ -88,7 +88,7 @@ std::bitset<N> to_bitset_impl(Bools ...bools)
 
 
 
-template <typename T, size_t N, size_t ...A>
+template <typename T, std::size_t N, std::size_t ...A>
 auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename std::tuple_element_t<A, std::array<T, sizeof...(A)>>...)
 {
   return to_bitset_impl<N, typename std::tuple_element_t<A, std::array<T, sizeof...(A)>>...>;
@@ -96,7 +96,7 @@ auto to_bitset_helper(std::index_sequence<A...>) -> std::bitset<N>(*)(typename s
 
 
 
-template <typename T, size_t A, size_t N = 128>
+template <typename T, std::size_t A, std::size_t N = 128>
 auto to_bitset() -> decltype(to_bitset_helper<T, N>(std::make_index_sequence<A>{}))
 {
   return to_bitset_helper<T, N>(std::make_index_sequence<A>{});
@@ -105,7 +105,7 @@ auto to_bitset() -> decltype(to_bitset_helper<T, N>(std::make_index_sequence<A>{
 
 
 /// implementation of the apply_to<N, F>, refer to that for more info
-template <typename Number, size_t ...I, typename Function, size_t ...N>
+template <typename Number, std::size_t ...I, typename Function, std::size_t ...N>
 auto apply_to_impl(std::index_sequence<I...>, Function function, std::index_sequence<N...>)
 {
   using Traits = function_traits<decltype(function)>;
@@ -119,7 +119,7 @@ auto apply_to_impl(std::index_sequence<I...>, Function function, std::index_sequ
 
 
 /// helper of apply_to<N, F>, refer to that for more info
-template <typename Number, typename Function, size_t ...N>
+template <typename Number, typename Function, std::size_t ...N>
 auto apply_to_helper(Function function, std::index_sequence<N...>)
 {
   using Traits = function_traits<decltype(function)>;
@@ -134,7 +134,7 @@ auto apply_to_helper(Function function, std::index_sequence<N...>)
 /// whose result is the same as calling ff on the last F arguments, ignoring the first NF arguments
 /// there is no reason why would apply_to<0> not work; it's just prevented as no use case is envisioned for it
 /// being that this is written mainly to make index masking a touch easier
-template <size_t N, typename Function>
+template <std::size_t N, typename Function>
 auto apply_to(Function function)
 {
   static_assert(N > 0, "ERROR: apply_to is not callable with N = 0, as in this case no masking is necessary!!");
@@ -164,6 +164,15 @@ constexpr auto max(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
                  return arg1 > arg2 ? arg1 : arg2;
   else
     return max(max(arg1, arg2), args...);
+}
+
+
+
+template <std::size_t N>
+constexpr std::size_t last_n(std::size_t bits)
+{
+  static_assert(N < sizeof(std::size_t), "ERROR: this function makes no sense for too large N!");
+  return bits & std::bitset<N>(std::numeric_limits<std::size_t>::max()).to_ullong();
 }
 
 #endif

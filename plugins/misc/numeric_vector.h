@@ -73,7 +73,7 @@ Number rapidity(Number pt, Number eta, Number mass)
 
 
 /// helper for multivector_system_impl, doing the actual daughter assignment
-template <size_t ...N, typename Number>
+template <std::size_t ...N, typename Number>
 void assign_vector(std::array<TLorentzVector, sizeof...(N)> &p4, std::array<Number, 4 * sizeof...(N)> &arg, std::index_sequence<N...>)
 {
   (std::get<N>(p4).SetPtEtaPhiM(std::get<4 * N>(arg), std::get<(4 * N) + 1>(arg), std::get<(4 * N) + 2>(arg), std::get<(4 * N) + 3>(arg)), ...);
@@ -83,7 +83,7 @@ void assign_vector(std::array<TLorentzVector, sizeof...(N)> &p4, std::array<Numb
 
 /// provide a reference to sum of N 4-momenta
 /// with arg checking to minimize the reassignment i.e. reuse the p4 as much as possible
-template <size_t ...N, typename ...Numbers>
+template <std::size_t ...N, typename ...Numbers>
 const TLorentzVector& multivector_system_impl(std::index_sequence<N...>, Numbers ...numbers)
 {
   static_assert(sizeof...(N) > 0 and sizeof...(numbers) == sizeof...(N) and sizeof...(N) % 4 == 0, 
@@ -132,7 +132,7 @@ Number invariant_mass_impl(Number number, Numbers ...numbers)
 
 
 /// helper that returns a function pointer to invariant_mass_impl
-template <typename Number, size_t ...N>
+template <typename Number, std::size_t ...N>
 auto invariant_mass_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
 {
   return invariant_mass_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
@@ -141,7 +141,7 @@ auto invariant_mass_helper(std::index_sequence<N...>) -> Number(*)(typename std:
 
 
 /// a function returning a function that calculates the invariant mass of system consisting of N 4-momenta 
-template <size_t N = 2, typename Number = float>
+template <std::size_t N = 2, typename Number = float>
 auto invariant_mass() -> decltype(invariant_mass_helper<Number>(std::make_index_sequence<4 * N>{}))
 {
   return invariant_mass_helper<Number>(std::make_index_sequence<4 * N>{});
@@ -159,7 +159,7 @@ Number system_pt_impl(Number number, Numbers ...numbers)
 
 
 
-template <typename Number, size_t ...N>
+template <typename Number, std::size_t ...N>
 auto system_pt_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
 {
   return system_pt_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
@@ -167,7 +167,7 @@ auto system_pt_helper(std::index_sequence<N...>) -> Number(*)(typename std::tupl
 
 
 
-template <size_t N = 2, typename Number = float>
+template <std::size_t N = 2, typename Number = float>
 auto system_pt() -> decltype(system_pt_helper<Number>(std::make_index_sequence<4 * N>{}))
 {
   return system_pt_helper<Number>(std::make_index_sequence<4 * N>{});
@@ -185,7 +185,7 @@ Number system_rapidity_impl(Number number, Numbers ...numbers)
 
 
 
-template <typename Number, size_t ...N>
+template <typename Number, std::size_t ...N>
 auto system_rapidity_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
 {
   return system_rapidity_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
@@ -193,7 +193,7 @@ auto system_rapidity_helper(std::index_sequence<N...>) -> Number(*)(typename std
 
 
 
-template <size_t N = 2, typename Number = float>
+template <std::size_t N = 2, typename Number = float>
 auto system_rapidity() -> decltype(system_rapidity_helper<Number>(std::make_index_sequence<4 * N>{}))
 {
   return system_rapidity_helper<Number>(std::make_index_sequence<4 * N>{});
@@ -211,7 +211,7 @@ Number system_eta_impl(Number number, Numbers ...numbers)
 
 
 
-template <typename Number, size_t ...N>
+template <typename Number, std::size_t ...N>
 auto system_eta_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
 {
   return system_eta_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
@@ -219,7 +219,7 @@ auto system_eta_helper(std::index_sequence<N...>) -> Number(*)(typename std::tup
 
 
 
-template <size_t N = 2, typename Number = float>
+template <std::size_t N = 2, typename Number = float>
 auto system_eta() -> decltype(system_eta_helper<Number>(std::make_index_sequence<4 * N>{}))
 {
   return system_eta_helper<Number>(std::make_index_sequence<4 * N>{});
@@ -236,7 +236,7 @@ Number system_phi_impl(Number number, Numbers ...numbers)
 
 
 
-template <typename Number, size_t ...N>
+template <typename Number, std::size_t ...N>
 auto system_phi_helper(std::index_sequence<N...>) -> Number(*)(typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...)
 {
   return system_phi_impl<typename std::tuple_element<N, std::array<Number, sizeof...(N)>>::type...>;
@@ -244,7 +244,7 @@ auto system_phi_helper(std::index_sequence<N...>) -> Number(*)(typename std::tup
 
 
 
-template <size_t N = 2, typename Number = float>
+template <std::size_t N = 2, typename Number = float>
 auto system_phi() -> decltype(system_phi_helper<Number>(std::make_index_sequence<4 * N>{}))
 {
   return system_phi_helper<Number>(std::make_index_sequence<4 * N>{});
