@@ -96,10 +96,10 @@ namespace Framework {
 
 // so that many of the tuple shenanigans work
 namespace std {
-  template <size_t N, typename ...Ts>
+  template <std::size_t N, typename ...Ts>
   struct tuple_size<Framework::Aggregate<N, Ts...>> : tuple_size<Framework::Group<Ts...>> {};
 
-  template <size_t I, size_t N, typename ...Ts>
+  template <std::size_t I, std::size_t N, typename ...Ts>
   struct tuple_element<I, Framework::Aggregate<N, Ts...>> : tuple_element<I, typename Framework::Group<Ts...>> {};
 }
 
