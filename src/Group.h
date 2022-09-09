@@ -284,9 +284,9 @@ namespace Framework {
 // so that many of the tuple shenanigans work
 namespace std {
   template <typename ...Ts>
-  struct tuple_size<Framework::Group<Ts...>> : std::integral_constant<size_t, sizeof...(Ts)> {};
+  struct tuple_size<Framework::Group<Ts...>> : std::integral_constant<std::size_t, sizeof...(Ts)> {};
 
-  template <size_t I, typename ...Ts>
+  template <std::size_t I, typename ...Ts>
   struct tuple_element<I, Framework::Group<Ts...>> : tuple_element<I, typename Framework::Group<Ts...>::sorted> {};
 }
 
