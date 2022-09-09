@@ -90,3 +90,5 @@ namespace electron_id {
   template <int WP>
   ROOT::VecOps::RVec<int> (*pass_cutbased)(const ROOT::VecOps::RVec<int>&) = &pass_id<cut::bitset_all<WP>>;
 }
+
+#endif
