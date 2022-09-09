@@ -101,7 +101,7 @@ namespace electron_id {
 
     ROOT::VecOps::RVec<int> passID(bitmap.size(), 0);
     for (std::size_t ibit = 0ull; ibit < bitmap.size(); ++ibit) {
-      bool pass_cuts = false;
+      bool pass_cuts = true;
 
       for (int icut = 0; icut < ncut; ++icut) {
         const int nshift = icut * nbit;
