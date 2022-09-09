@@ -13,7 +13,7 @@
 #include "misc/string_io.h"
 #include "json/json.hpp"
 
-template <size_t NPATH = 128, size_t NSEED = NPATH>
+template <std::size_t NPATH = 128, std::size_t NSEED = NPATH>
 class Prescaler {
 public:
   struct Data {
@@ -78,7 +78,7 @@ private:
 
 
 
-template <size_t NPATH, size_t NSEED>
+template <std::size_t NPATH, std::size_t NSEED>
 double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NPATH> &hltbits, const std::bitset<NSEED> &l1bits)
 {
   if (run_ != run) {
@@ -135,7 +135,7 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
 
 
 
-template <size_t NPATH, size_t NSEED>
+template <std::size_t NPATH, std::size_t NSEED>
 void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::vector<std::string> &keep)
 {
   using json = nlohmann::json;
@@ -216,7 +216,7 @@ void Prescaler<NPATH, NSEED>::initialize(const std::string &input, const std::ve
 
 
 
-template <size_t NPATH, size_t NSEED>
+template <std::size_t NPATH, std::size_t NSEED>
 int Prescaler<NPATH, NSEED>::index(const std::string &key, std::vector<std::string> &container)
 {
   auto ite = std::find(std::begin(container), std::end(container), key);
@@ -231,7 +231,7 @@ int Prescaler<NPATH, NSEED>::index(const std::string &key, std::vector<std::stri
 
 
 
-template <size_t NPATH, size_t NSEED>
+template <std::size_t NPATH, std::size_t NSEED>
 double Prescaler<NPATH, NSEED>::scream(int run_, int lumi_)
 {
   std::cout << "WARNING: Prescaler is queried with an unexpected run " << run_ << " or lumi section " << lumi_ << ". Returning a weight of 0!" << std::endl;
@@ -247,7 +247,7 @@ double Prescaler<NPATH, NSEED>::scream(int run_, int lumi_)
 
 
 
-template <size_t NPATH, size_t NSEED>
+template <std::size_t NPATH, std::size_t NSEED>
 void Prescaler<NPATH, NSEED>::check() const
 {
   if (paths.size() > NPATH or seeds.size() > NSEED) {

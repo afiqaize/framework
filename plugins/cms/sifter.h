@@ -13,7 +13,7 @@
 #include "misc/container_util.h"
 #include "misc/string_io.h"
 
-template <size_t NPATH = 128>
+template <std::size_t NPATH = 128>
 class Sifter {
 public:
   /// add trigger paths
@@ -38,7 +38,7 @@ private:
 
 
 
-template <size_t NPATH>
+template <std::size_t NPATH>
 void Sifter<NPATH>::add(const std::vector<std::string> &paths_)
 {
   int iadd = 0;
@@ -58,7 +58,7 @@ void Sifter<NPATH>::add(const std::vector<std::string> &paths_)
 
 
 
-template <size_t NPATH>
+template <std::size_t NPATH>
 std::vector<std::string> Sifter<NPATH>::paths_at_tier(int tier) const
 {
   if (tier >= tiers.size())
@@ -70,7 +70,7 @@ std::vector<std::string> Sifter<NPATH>::paths_at_tier(int tier) const
 
 
 
-template <size_t NPATH>
+template <std::size_t NPATH>
 bool Sifter<NPATH>::accept(int tier, const std::bitset<NPATH> &bits) const
 {
   if (tier >= tiers.size())

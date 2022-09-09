@@ -1,14 +1,15 @@
+// -*- C++ -*-
+// author: afiq anuar
+// short: utility handling (curently: cut based) electron IDs
+// note: RDF is just to allow compatibility, and won't be actually used
+
+#ifndef FWK_FUNCTION_UTIL_H
+#define FWK_FUNCTION_UTIL_H
+
 #include <limits>
 #include <bitset>
 
 #include "ROOT/RVec.hxx"
-
-template <size_t N>
-constexpr size_t last_n(size_t bits)
-{
-  static_assert(N < sizeof(size_t), "ERROR: this function makes no sense for too large N!");
-  return bits & std::bitset<N>(std::numeric_limits<std::size_t>::max()).to_ullong();
-}
 
 namespace electron_id {
   namespace wp {
@@ -68,7 +69,7 @@ namespace electron_id {
     using wp::nbit;
 
     ROOT::VecOps::RVec<int> rvec_passID(bitmap.size(), 0);
-    for (size_t ibit = 0ull; ibit < bitmap.size(); ++ibit) {
+    for (std::size_t ibit = 0ull; ibit < bitmap.size(); ++ibit) {
       bool pass_cuts = false;
 
       for (int icut = 0; icut < ncut; ++icut) {
