@@ -130,7 +130,9 @@ double Prescaler<NPATH, NSEED>::weight(int run_, int lumi_, const std::bitset<NP
     }
   }
 
-  return 1. / (1. - std::accumulate(std::begin(eps), std::end(eps), 1., [] (double probability, int prescale) { return probability * (1. - (1. / prescale)); }));
+  auto all_fail = std::accumulate(std::begin(eps), std::end(eps), 1.,
+                                  [] (double probability, int prescale) { return probability * (1. - (1. / prescale)); });
+  return (all_fail == 1.) ? 0. : 1. / (1. - all_fail);
 }
 
 
