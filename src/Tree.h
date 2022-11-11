@@ -46,11 +46,12 @@ namespace Framework {
     void save(/*const std::string &name*/) const;
 
   protected:
-    // FIXME https://root-forum.cern.ch/t/follow-up-on-ram-vs-disk-resident-ttree-compression-bug/40775
-    // for the moment use disk-resident tree as workaround
+    /// ptr to the file
     std::unique_ptr<TFile> file;
 
     /// ptr to the tree
+    /// this is raw ptr instead of uptr because we have the tree to be disk-resident to the file above (see Tree ctor definition)
+    /// destruction of such trees are handled by file dtor, so we don't need to manage it directly
     TTree *ptr;
 
     /// storage of source groups and the branches they contribute
