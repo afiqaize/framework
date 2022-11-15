@@ -16,8 +16,8 @@
 #include <functional>
 
 /// string replacement - replaces the first occurence only
-inline bool replace(std::string &str, const std::string &from, const std::string &to) {
-  std::string::size_type start_pos = str.find(from);
+inline bool replace(std::string &str, const std::string &from, const std::string &to, std::string::size_type begin_post = 0) {
+  std::string::size_type start_pos = str.find(from, begin_post);
   if (start_pos == std::string::npos)
     return false;
   str.replace(start_pos, from.length(), to);

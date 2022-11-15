@@ -14,15 +14,19 @@ int main(int argc, char** argv) {
                                        + "use the option multiple times to sum up multiple files.", true, "string", cmdbase);
   TCLAP::ValueArg<std::string> cmdtree("", "tree", "tree name of nominal and systematic files, if present.", true, "", "string", cmdbase);
   TCLAP::MultiArg<std::string> cmdvar("", "variable", "variable(s) to use. "s
-                                      + "variable names must correspond to branch names in the tree. "
+                                      + "variable names must correspond to branch names in the tree, except in one case explained below. "
                                       + "they must contain only alphanumeric or underscore characters. "
                                       + "example syntax: 'cHel : nbin;min,max' or 'mtt : edge1,edge2,...,edgeN' " 
                                       + "for fixed/variable binning respectively. "
                                       + "expressions like 'c = <expression> : binning', can also be used. "
                                       + "accepted expressions are unary operations 'op(a)' or binary operations 'a op b'. "
-                                      + "supported unary operations: exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate, relu and invert. "
+                                      + "where a and b are either expressions or branch names in the tree."
+                                      + "supported unary operations: constant, exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate, relu and invert. "
                                       + "supported binary operations: +, -, * and /. "
                                       + "variables and expressions are interpreted as floating-point. "
+                                      + "constant() takes one argument, which must be a literal constant e.g. -1.0, 3.14159, etc. "
+                                      + "no, things like 1/2 or 3+11 are not constants for this purpose, since they require evaluating a binary expression. "
+                                      + "this is a systematic template smoother not a string parser sheesh. "
                                       + "under- and overflows are automatically added to the first and last bins respectively. "
                                       + "use the option multiple times to make a multidimensional histogram.", true, "string", cmdbase);
   TCLAP::MultiArg<std::string> cmdweight("", "weight", "branch name to be used as weight. also accepts expressions (see --variable). "s

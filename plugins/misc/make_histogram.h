@@ -25,9 +25,36 @@ bool valid_name(const std::string &str)
 
 
 
+/// to translate the argument of constant argument to unary constant(...) into something that valid_name() returns true for
+/// but looks awful enough that presumably no one uses it as an actual branch name
+std::string to_constant_str(const std::string &str)
+{
+  // not that these strings have explainable, but human readability is nice
+  auto copy = "__cv__" + str; // constant value
+  replace(copy, "-", "ns"); // negative sign
+  replace(copy, "+", "");
+  replace(copy, ".", "fp"); // floating point
+  return copy;
+}
+
+
+
+/// the reverse operation of the above
+/// no check is made whether it's actually a valid constant string - this is merely an impl detail
+double constant_str_value(const std::string &str)
+{
+  auto copy = str;
+  replace(copy, "fp", ".");
+  replace(copy, "ns", "-");
+  replace(copy, "__cv__", "");
+  return std::stod(copy);
+}
+
+
+
 /// is a string elementary or not; if yes, returns a vector of string containing its name, the operation involved and the operands
 /// op1(a) and a op2 b are both elementary, anything else are not
-/// op1/op2 can be any of the supported binary/unary operations
+/// op1/op2 can be any of the supported unary/binary operations
 /// and a, b are valid names i.e. containing only alphanumeric + underscores
 std::vector<std::string> is_elementary(const std::string &expression, const std::vector<std::string> &unaries, const std::vector<std::string> &binaries)
 {
@@ -103,7 +130,8 @@ void unique_emplace(std::vector<std::vector<std::string>> &expressions, std::vec
 /// with the branch name automatically generated
 void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 {
-  static const std::vector<std::string> unaries = {"exp(", "log(", "log10(",
+  static const std::vector<std::string> unaries = {"constant(",
+                                                   "exp(", "log(", "log10(",
                                                    "sin(", "cos(", "tan(", "asin(", "acos(", "atan(",
                                                    "sqrt(", "abs(", "negate(", "relu(", "invert("};
   static const std::vector<std::string> binaries = {"*", "/", "+", "-"};
@@ -167,8 +195,19 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
     if (exp == "")
       continue;
 
-    // get all the 'raw' attribute names and dump them in
-    // need to first get rid of the unaries
+    // constants parsing in expression need some hacks, do that first
+    // done by transforming them a technically valid (but looking so nonsensical that hopefully no none uses it) variable name
+    auto iconstant = exp.find(unaries[0]);
+    while (iconstant != std::string::npos) {
+      auto iclose = exp.find(")", iconstant + unaries[0].length());
+      auto real_value_str = exp.substr(iconstant + unaries[0].length(), iclose - iconstant - unaries[0].length());
+      auto value_str = to_constant_str(real_value_str);
+      replace(exp, real_value_str, value_str, iconstant);
+      iconstant = exp.find(unaries[0], exp.find(value_str));
+    }
+
+    // get all the 'raw' attribute names and dump them into a list, to be added to the Collection later
+    // by getting rid of all the unaries, and grabbing valid variable names
     auto cexp = exp;
     for (const auto &unary : unaries)
       strip(cexp, unary);
@@ -261,7 +300,6 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
   std::vector<std::vector<double>> cedges, fedges;
 
   for (const auto &var : variables) {
-    //std::cout << var << std::endl;
     auto veb = split(var, ":");
     if (veb.size() != 2) {
       std::cerr << "Variable or expression " << var << " is invalid" << std::endl;
@@ -347,9 +385,9 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     std::cout << std::endl;
   }
   std::cout << "     ----------------     " << std::endl;
-  */
+  ****/
   parse_expressions(expressions);
-  /*
+  /****
   for (auto &exp : expressions) {
     for (auto &var : exp)
       std::cout << var << " -- ";
@@ -365,7 +403,7 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
   std::vector<std::string> branches;
   Collection<float, double> src("src", expressions.size());
   for (const auto &var : expressions) {
-    if (var.size() == 2 and var[1] == "") {
+    if (var.size() == 2 and var[1] == "" and not contain(var[0], "__cv__")) {
       src.add_attribute(var[0], var[0]);
       branches.emplace_back(var[0]);
     }
@@ -403,28 +441,42 @@ auto make_collection(const std::tuple<
                      std::string> &variables_bins)
 {
   using namespace Framework;
-
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
     throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting." );
 
   Collection<float, double> coll("coll", variables.size());
   for (const auto &var : variables) {
-    if (var.size() == 2 and var[1] == "")
+    if (var.size() == 2 and var[1] == "" and not contain(var[0], "__cv__"))
       coll.add_attribute(var[0], var[0], 1.);
     else if (var.size() > 2 and var[1] == "__source__(")
       coll.add_attribute(var[0], var[2], 1.f);
   }
 
-  while (coll.n_attributes() != variables.size()) {
+  // constant(...) declares a new attribute, but doesn't introduce one itself
+  // while variables contain an entry for the dummy constant (due to the limited string parsing we use here), that we need to correct for
+  const int nconst = std::count_if( std::begin(variables), std::end(variables), [] (const auto &var) {return contain(var[0], "__cv__");} );
+  while (coll.n_attributes() + nconst != variables.size()) {
     for (const auto &var : variables) {
       if (var.size() > 2) {
         bool isthere = true;
+
         for (int iarg = 2; iarg < var.size(); ++iarg)
-          isthere = isthere and coll.has_attribute(var[iarg]);
+          isthere = isthere and (coll.has_attribute(var[iarg]) or var[1] == "constant(");
 
         if (isthere) {
-          if (var[1] == "exp(")
+          if (var[1] == "constant(") {
+            const auto attrs = coll.attributes();
+            for (auto &attr : attrs) {
+              if (coll.get_if<double>(attr) != nullptr) {
+                // the hack is a workaround of transform_attribute not taking argless functions
+                coll.transform_attribute(var[0], [value = constant_str_value(var[2])] (double x) {return (x / x) * value;}, attr);
+                break;
+              }
+            }
+          }
+
+          else if (var[1] == "exp(")
             coll.transform_attribute(var[0], [] (double x) {return std::exp(x);}, var[2]);
           else if (var[1] == "log(")
             coll.transform_attribute(var[0], [] (double x) {return std::log(x);}, var[2]);
@@ -452,8 +504,10 @@ auto make_collection(const std::tuple<
             coll.transform_attribute(var[0], [] (double x) {return std::max(0., x);}, var[2]);
           else if (var[1] == "invert(")
             coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
+
           else if (var[1] == "__promote__(")
             coll.transform_attribute(var[0], [] (float x) {return double(x);}, var[2]);
+
           else if (var[1] == "+")
             coll.transform_attribute(var[0], [] (double x, double y) {return x + y;}, var[2], var[3]);
           else if (var[1] == "-")
