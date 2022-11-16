@@ -133,7 +133,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
   static const std::vector<std::string> unaries = {"constant(",
                                                    "exp(", "log(", "log10(",
                                                    "sin(", "cos(", "tan(", "asin(", "acos(", "atan(",
-                                                   "sqrt(", "abs(", "negate(", "relu(", "invert("};
+                                                   "sqrt(", "abs(", "negate(", "relu(", "step(", "invert("};
   static const std::vector<std::string> binaries = {"*", "/", "+", "-"};
 
   // decompose expressions like a + b + c + d + e -> f + c + d + e -> g + d + e -> h + e...
@@ -203,7 +203,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
       auto real_value_str = exp.substr(iconstant + unaries[0].length(), iclose - iconstant - unaries[0].length());
       auto value_str = to_constant_str(real_value_str);
       replace(exp, real_value_str, value_str, iconstant);
-      iconstant = exp.find(unaries[0], exp.find(value_str));
+      iconstant = exp.find(unaries[0], exp.find(value_str, iconstant));
     }
 
     // get all the 'raw' attribute names and dump them into a list, to be added to the Collection later
@@ -502,6 +502,8 @@ auto make_collection(const std::tuple<
             coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
           else if (var[1] == "relu(")
             coll.transform_attribute(var[0], [] (double x) {return std::max(0., x);}, var[2]);
+          else if (var[1] == "step(")
+            coll.transform_attribute(var[0], [] (double x) {return x > 0. ? 1. : 0.;}, var[2]);
           else if (var[1] == "invert(")
             coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
 

@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
                                       + "expressions like 'c = <expression> : binning', can also be used. "
                                       + "accepted expressions are unary operations 'op(a)' or binary operations 'a op b'. "
                                       + "where a and b are either expressions or branch names in the tree."
-                                      + "supported unary operations: constant, exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate, relu and invert. "
+                                      + "supported unary operations: constant, exp, log, log10, sin, cos, tan, asin, acos, atan, sqrt, abs, negate, relu, step and invert. "
                                       + "supported binary operations: +, -, * and /. "
                                       + "variables and expressions are interpreted as floating-point. "
                                       + "constant() takes one argument, which must be a literal constant e.g. -1.0, 3.14159, etc. "
