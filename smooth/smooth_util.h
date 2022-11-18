@@ -843,8 +843,12 @@ void smooth_templates(const std::vector<std::string> &files,
     else if (oneside and weight.size() != 2)
       throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 2 if --type is weight and --one-side is used. Aborting." );
   }
-  else if (weight.size() != 1)
-    throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 1 if --type is tree. Aborting." );
+  else if (type == "tree") {
+    if (not oneside and weight.size() != 3 and weight.size() != 1 and not weight.empty())
+      throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 3/1/0 if --type is tree. Aborting." );
+    else if (oneside and weight.size() != 2 and weight.size() != 1 and not weight.empty())
+      throw std::runtime_error( "ERROR: smooth_util::smooth_templates: number of weight expressions must be 2/1/0 if --type is tree and --one-side is used. Aborting." );
+  }
 
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
@@ -861,7 +865,7 @@ void smooth_templates(const std::vector<std::string> &files,
 
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);
-  auto variables_h = (type == "tree") ? variables_n : variables_and_binning(variables, weight[1], fvary_h, tree);
+  auto variables_h = variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[1], fvary_h, tree);
   auto coll_h = make_collection(variables_h);
 
   auto fvary_l = fvary_h;
@@ -871,7 +875,7 @@ void smooth_templates(const std::vector<std::string> &files,
   }
   Framework::Dataset<TChain> data_l("data_l", tree);
   data_l.set_files(fvary_l);
-  auto variables_l = (type == "tree" or oneside) ? variables_n : variables_and_binning(variables, weight[2], fvary_l, tree);
+  auto variables_l = (oneside) ? variables_h : variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[2], fvary_l, tree);
   auto coll_l = make_collection(variables_l);
 
   if (not fixed_bandwidth.empty()) {
