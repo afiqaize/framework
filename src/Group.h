@@ -24,6 +24,9 @@ namespace Framework {
     using idxs = Indices<base>;
     using sorted = typename tuple_selection_sort<std::tuple<Ts...>, greater_size_or_name>::type;
 
+    /// helper to obtain the type of data held by the Group
+    /// actual data is held as vectors of Ts, where a given attribute can be at most of one particular T
+    /// thus the implementation is in term of a variant of these vectors
     template <typename T>
     struct data_impl {};
 
@@ -31,11 +34,7 @@ namespace Framework {
     struct data_impl<std::index_sequence<Is...>> {
       template <std::size_t I>
       using value = typename std::vector<std::tuple_element_t<I, sorted>>;
-
-      template <std::size_t I>
-      using reference_to_value = typename std::reference_wrapper<value<I>>;
-
-      using type = std::variant<value<Is>, reference_to_value<Is>...>;
+      using type = std::variant<value<Is>...>;
     };
     using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
 
@@ -84,7 +83,12 @@ namespace Framework {
     template <typename Function, typename ...Attributes>
     bool transform_attribute(const std::string &attr, Function function, Attributes &&...attrs);
 
+    /// alias an attribute name with another
+    /// the aliasing name has to be unique
+    bool alias_attribute(const std::string &alias, const std::string &attr);
+
     /// list of attributes
+    /// returns the name of actual attributes only, not aliases!!
     std::vector<std::string> attributes() const;
 
     /// reference to container of elements
@@ -287,6 +291,9 @@ namespace Framework {
     /// first string is attribute alias
     /// second function is for the element-wise transformation from other attributes
     std::vector<std::pair<std::string, std::function<void()>>> v_attr;
+
+    /// register of aliasing attributes, and the indices of the actual attribute it points to
+    std::vector<std::pair<std::string, int>> v_alias;
 
     /// attribute storage
     std::vector<data_type> v_data;

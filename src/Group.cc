@@ -106,8 +106,7 @@ bool Framework::Group<Ts...>::transform_attribute(const std::string &attr, Funct
   if (has_attribute(attr))
     return false;
 
-  auto iA = (has_attribute(attrs) and ...);
-  if (!iA)
+  if (auto iA = (has_attribute(attrs) and ...); not iA)
     throw std::invalid_argument( "ERROR: Group::transform_attribute: some of the requested attributes are not within the group!!" );
 
   // note on the structure
@@ -140,6 +139,22 @@ bool Framework::Group<Ts...>::transform_attribute(const std::string &attr, Funct
 
   v_attr.emplace_back(std::make_pair(attr, std::function<void()>(f_apply)));
   v_data.emplace_back(std::vector<typename Traits::result_type>());
+
+  return true;
+}
+
+
+
+template <typename ...Ts>
+bool Framework::Group<Ts...>::alias_attribute(const std::string &alias, const std::string &attr)
+{
+  if (has_attribute(alias))
+    return false;
+
+  if (auto iA = inquire(attr); iA == -1)
+    throw std::invalid_argument( "ERROR: Group::alias_attribute: the requested attribute to be aliased is not present in the Group!!" );
+  else
+    v_alias.emplace_back(alias, iA);
 
   return true;
 }
@@ -377,8 +392,7 @@ void Framework::Group<Ts...>::iterate(Function function, const IdxAttr &idxs_or_
         }, v_data[inquire(attrs)]...);
     }
   else {
-    auto iA = ((has_attribute(idxs_or_attr) and has_attribute(attrs)) and ...);
-    if (!iA)
+    if (auto iA = ((has_attribute(idxs_or_attr) and has_attribute(attrs)) and ...); not iA)
       throw std::invalid_argument( "ERROR: Group::iterate: some of the requested attributes are not within the group!!" );
 
     std::visit([&function, this] (const auto &...vec) {
@@ -397,8 +411,7 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::filter(const typ
 {
   static_assert(sizeof...(attrs) > 0, "ERROR: Group::filter makes no sense without specifying attributes!!");
 
-  auto iA = (has_attribute(attrs) and ...);
-  if (!iA)
+  if (auto iA = (has_attribute(attrs) and ...); not iA)
     throw std::invalid_argument( "ERROR: Group::filter some of the requested attributes are not within the group!!" );
 
   if (v_idx.ref == this and v_idx.empty())
@@ -581,11 +594,13 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::sort_absolute_de
 template <typename ...Ts>
 int Framework::Group<Ts...>::inquire(const std::string &name) const noexcept
 {
-  for (int iA = 0; iA < v_attr.size(); ++iA) {
-    auto &[alias, _] = v_attr[iA];
-    (void) _;
+  for (int iA = 0; iA < v_alias.size(); ++iA) {
+    if (auto &[alias, idx] = v_alias[iA]; alias == name)
+      return idx;
+  }
 
-    if (alias == name)
+  for (int iA = 0; iA < v_attr.size(); ++iA) {
+    if (v_attr[iA].first == name)
       return iA;
   }
 
