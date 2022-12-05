@@ -107,8 +107,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     if (leaf == nullptr)
       throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested counter branch " + counter_name + "!!!" );
 
-    const std::string ctype = leaf->GetTypeName();
-    if (ctype == "Int_t")
+    if (const std::string ctype = leaf->GetTypeName(); ctype == "Int_t")
       this->counter = 0;
     else if (ctype == "UInt_t")
       this->counter = 0u;
@@ -132,8 +131,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
     if (leaf == nullptr)
       throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested branch " + branch_name + "!!!" );
 
-    const std::string btype = leaf->GetTypeName();
-    if (btype == "Int_t")
+    if (const std::string btype = leaf->GetTypeName(); btype == "Int_t")
       Group<Ts...>::template retype<int>(this->v_data[iB]);
     else if (btype == "UInt_t")
       Group<Ts...>::template retype<uint>(this->v_data[iB]);
@@ -174,12 +172,9 @@ void Framework::Collection<Ts...>::reassociate()
 
   // reset to default all branches that disappear in the current file
   for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    auto &[branch_name, branch] = v_branch[iD];
-    if (branch_name != "" and branch == nullptr) {
-      // maybe better to default only the value, and not the type
+    if (auto &[branch_name, branch] = v_branch[iD]; branch_name != "" and branch == nullptr) {
+      // default only the value, and not the type
       // in order to keep the file-based typing in associate() to be the last retype() call
-      //std::visit([this, iD] (auto &def) { Group<Ts...>::template retype<decltype(def)>(this->v_data[iD]); }, v_default[iD]);
-
       std::visit([capacity = this->v_index.capacity()] (auto &vec, auto &def) {
           for (int iv = 0; iv < capacity; ++iv)
             vec[iv] = def;
@@ -191,9 +186,7 @@ void Framework::Collection<Ts...>::reassociate()
     return;
 
   // allocate memory as needed according to the current file
-  TLeaf *leaf = tree->GetLeaf(counter_name.c_str());
-  auto current_max = leaf->GetMaximum();
-  if (current_max > this->v_index.capacity()) {
+  if (auto current_max = tree->GetLeaf(counter_name.c_str())->GetMaximum(); current_max > this->v_index.capacity()) {
     this->initialize(current_max);
 
     for (int iD = 0; iD < this->v_data.size(); ++iD) {

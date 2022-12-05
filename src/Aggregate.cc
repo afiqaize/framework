@@ -26,7 +26,7 @@ template <std::size_t N, typename ...Ts>
 template <typename Indexer>
 void Framework::Aggregate<N, Ts...>::set_indexer(Indexer indexer_)
 {
-  if (!indexer) {
+  if (not indexer) {
     auto get_indexer = [indexer_] (const auto &...grps) { return indexer_(grps.get()...); };
 
     auto f_index = [this, get_indexer] () -> void {
@@ -65,7 +65,7 @@ bool Framework::Aggregate<N, Ts...>::add_attribute(const std::string &attr, Func
 
   static constexpr std::array<int, 2> no_attribute = {-1, -1};
   const bool has_all_attribute = ((inquire_group(attrs) != no_attribute) and ...);
-  if (!has_all_attribute)
+  if (not has_all_attribute)
     return false;
 
   auto f_calculate = [function] (auto &val, const auto &...vals) -> void {
