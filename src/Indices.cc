@@ -133,7 +133,7 @@ template <typename Group>
 template <typename Compare, typename ...Attributes>
 Framework::Indices<Group> Framework::Indices<Group>::filter(Compare &compare, Attributes &&...attrs) const
 {
-  return ref->filter(*this, compare, attrs...);
+  return ref->filter(*this, compare, std::forward<Attributes>(attrs)...);
 }
 
 
