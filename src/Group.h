@@ -17,6 +17,7 @@ namespace Framework {
     static_assert(not contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
                   "when bool is among the included types. For boolean attributes please use the 'boolean' type instead, which is a drop-in "
                   "replacement provided precisely to avoid this quirk of the standard.");
+    static_assert(std::disjunction_v<std::is_arithmetic<Ts>, std::is_same<Ts, boolean>> and ..., "ERROR: Group is intended to be used only for arithmetic underlying types!!");
 
   public:
     using base = Group<Ts...>;
@@ -28,13 +29,26 @@ namespace Framework {
 
     template <std::size_t... Is>
     struct data_impl<std::index_sequence<Is...>> {
-      using type = std::variant<std::vector<std::tuple_element_t<Is, sorted>>...>;
+      template <std::size_t I>
+      using value = typename std::vector<std::tuple_element_t<I, sorted>>;
+
+      template <std::size_t I>
+      using reference_to_value = typename std::reference_wrapper<value<I>>;
+
+      using type = std::variant<value<Is>, reference_to_value<Is>...>;
     };
     using data_type = typename data_impl<std::make_index_sequence<sizeof...(Ts)>>::type;
 
     /// constructor
     Group() = delete;
     Group(const std::string &name_, int counter_);
+
+    Group(const Group &group) = delete;
+    Group(Group &&group) = default;
+
+    /// assignment
+    Group& operator=(const Group &group) = delete;
+    Group& operator=(Group &&group) = default;
 
     /// such that if (Group) is a well-defined expression
     /// and to no longer need to do if (Group.n_elements)
