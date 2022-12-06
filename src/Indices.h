@@ -19,6 +19,13 @@ namespace Framework {
     /// the default indexer is the one used by Group's as dummy
     Indices(const Group *group = nullptr, const std::vector<int> &idxs = {});
 
+    Indices(const Indices &indices) = default;
+    Indices(Indices &&indices) = default;
+
+    /// assignment
+    Indices& operator=(const Indices &indices) = default;
+    Indices& operator=(Indices &&indices) = default;
+
     /// many of these are just reproducing the neccessary vector interface that we use...
     /// as such only Indices-specific items will be elaborated upon
     /// being that one isn't really meant to edit the indices etc
@@ -50,6 +57,8 @@ namespace Framework {
     void clear() noexcept;
 
     void emplace_back(int idx);
+
+    void resize(int size);
 
     bool operator==(const Indices &other) const;
 

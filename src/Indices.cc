@@ -122,6 +122,14 @@ void Framework::Indices<Group>::emplace_back(int idx)
 
 
 template <typename Group>
+void Framework::Indices<Group>::resize(int size)
+{
+  v_index.resize(size);
+}
+
+
+
+template <typename Group>
 bool Framework::Indices<Group>::operator==(const Indices &other) const
 {
   return (ref == other.ref) ? v_index == other.v_index : false;
