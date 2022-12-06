@@ -160,7 +160,8 @@ namespace Framework {
 
     /// update the indices with another set e.g. output of filter/sort
     /// no checking if the indices are actually legit
-    bool update_indices(const idxs &v_idx);
+    template <typename T>
+    bool update_indices(T &&v_idx);
 
     /// element iterator taking a function and runs the visitor over it
     /// can be type-dependent or otherwise

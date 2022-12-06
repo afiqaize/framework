@@ -11,8 +11,8 @@ v_index(this),
 ordered(false)
 {
   if (std::get<int>(counter) > 0) {
-    for (int iC = 0; iC < std::get<int>(counter); ++iC)
-      v_index.emplace_back(iC);
+    v_index.resize(std::get<int>(counter));
+    std::iota(std::begin(v_index), std::end(v_index), 0);
   }
 }
 
@@ -358,12 +358,13 @@ typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::cend() co
 
 
 
+template <typename Idx>
 template <typename ...Ts>
-bool Framework::Group<Ts...>::update_indices(const typename Framework::Group<Ts...>::idxs &v_idx)
+bool Framework::Group<Ts...>::update_indices(Idx &&v_idx)
 {
-  v_index.clear();
-  for (auto idx : v_idx)
-    v_index.emplace_back(idx);
+  static_assert(std::is_same_v<std::remove_cv_t<std::remove_reference_t<Idx>>, Framework::Group<Ts...>::idxs>, "ERROR: Group::update_indices can only be called with indices type!!");
+
+  v_index = std::forward<Idx>(attrs);
   selected = v_index.size();
   ordered = false;
 
