@@ -388,7 +388,7 @@ void Framework::Group<Ts...>::iterate(Function function, const IdxAttr &idxs_or_
         throw std::invalid_argument( "ERROR: Group::iterate: requesting iteration over index set of another Group is nonsensical!!" );
 
       std::visit([&function, &idxs_or_attr, this] (const auto &...vec) {
-          for (auto idx : idxs_or_attr)
+          for (auto &&idx : idxs_or_attr)
             function(vec[idx]...);
         }, v_data[inquire(attrs)]...);
     }
@@ -397,7 +397,7 @@ void Framework::Group<Ts...>::iterate(Function function, const IdxAttr &idxs_or_
       throw std::invalid_argument( "ERROR: Group::iterate: some of the requested attributes are not within the group!!" );
 
     std::visit([&function, this] (const auto &...vec) {
-        for (auto idx : v_index)
+        for (auto &&idx : v_index)
           function(vec[idx]...);
       }, v_data[inquire(idxs_or_attr)], v_data[inquire(attrs)]...);
   }
@@ -680,7 +680,7 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::filter_helper(co
 {
   typename Framework::Group<Ts...>::idxs v_pass(this);
   std::visit([&v_pass, &v_idx, &compare] (const auto &...vec) {
-      for (auto index : v_idx) {
+      for (auto &&index : v_idx) {
         if (compare(vec[index]...))
           v_pass.emplace_back(index);
       }
@@ -700,12 +700,12 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::sort_helper(cons
   std::visit([&v_sort, &v_idx, &compare] (const auto &vec) {
       using VT = typename std::decay_t<decltype(vec)>::value_type;
       std::vector<std::pair<int, VT>> v_zip;
-      for (auto index : v_idx)
+      for (auto &&index : v_idx)
         v_zip.emplace_back(index, vec[index]);
 
       std::sort(std::begin(v_zip), std::end(v_zip), compare);
 
-      for (auto &zip : v_zip)
+      for (auto &&zip : v_zip)
         v_sort.emplace_back(zip.first);
     }, v_data[attr]);
 
