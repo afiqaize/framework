@@ -17,7 +17,7 @@ namespace Framework {
     static_assert(not contained_in<bool, Ts...>, "ERROR: Group relies on a few features that are incompatible with standard C++ "
                   "when bool is among the included types. For boolean attributes please use the 'boolean' type instead, which is a drop-in "
                   "replacement provided precisely to avoid this quirk of the standard.");
-    static_assert(std::disjunction_v<std::is_arithmetic<Ts>, std::is_same<Ts, boolean>> and ..., "ERROR: Group is intended to be used only for arithmetic underlying types!!");
+    static_assert((std::disjunction_v<std::is_arithmetic<Ts>, std::is_same<Ts, boolean>> and ...), "ERROR: Group is intended to be used only for arithmetic underlying types!!");
 
   public:
     using base = Group<Ts...>;
