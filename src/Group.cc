@@ -358,8 +358,8 @@ typename Framework::Group<Ts...>::idxs::citer Framework::Group<Ts...>::cend() co
 
 
 
-template <typename Idx>
 template <typename ...Ts>
+template <typename Idx>
 bool Framework::Group<Ts...>::update_indices(Idx &&v_idx)
 {
   static_assert(std::is_same_v<std::remove_cv_t<std::remove_reference_t<Idx>>, Framework::Group<Ts...>::idxs>, "ERROR: Group::update_indices can only be called with indices type!!");
