@@ -187,7 +187,7 @@ struct function_traits<Ret(Cls::*)(Args...) const> {
   static constexpr std::size_t arity = sizeof...(Args);
   using result_type = Ret;
   using tuple_arg_types = std::tuple<Args...>;
-  using tuple_arg_bare_types = std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>;
+  using tuple_arg_bare_types = std::tuple<std::decay_t<Args>...>;
 
   template <std::size_t I>
   using arg = typename std::tuple_element_t<I, tuple_arg_types>;
@@ -202,7 +202,7 @@ struct function_traits<Ret(Cls::*)(Args...)> {
   static constexpr std::size_t arity = sizeof...(Args);
   using result_type = Ret;
   using tuple_arg_types = std::tuple<Args...>;
-  using tuple_arg_bare_types = std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>;
+  using tuple_arg_bare_types = std::tuple<std::decay_t<Args>...>;
 
   template <std::size_t I>
   using arg = typename std::tuple_element_t<I, tuple_arg_types>;
@@ -217,7 +217,7 @@ struct function_traits<Ret(Args...)> {
   static constexpr std::size_t arity = sizeof...(Args);
   using result_type = Ret;
   using tuple_arg_types = std::tuple<Args...>;
-  using tuple_arg_bare_types = std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>;
+  using tuple_arg_bare_types = std::tuple<std::decay_t<Args>...>;
 
   template <std::size_t I>
   using arg = typename std::tuple_element_t<I, tuple_arg_types>;

@@ -362,7 +362,7 @@ template <typename ...Ts>
 template <typename Idx>
 bool Framework::Group<Ts...>::update_indices(Idx &&v_idx)
 {
-  static_assert(std::is_same_v<std::remove_cv_t<std::remove_reference_t<Idx>>, Framework::Group<Ts...>::idxs>, "ERROR: Group::update_indices can only be called with indices type!!");
+  static_assert(std::is_same_v<std::decay_t<Idx>, Framework::Group<Ts...>::idxs>, "ERROR: Group::update_indices can only be called with indices type!!");
 
   v_index = std::forward<Idx>(v_idx);
   selected = v_index.size();
@@ -509,8 +509,8 @@ typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::filter_bit_and(c
                                                                                const typename Framework::Group<Ts...>::idxs &v_idx) const
 {
   return filter(v_idx, [&value] (auto &data) {
-      if constexpr(std::is_integral_v<std::remove_cv_t<std::remove_reference_t<decltype(data)>>> and 
-                   std::is_integral_v<std::remove_cv_t<std::remove_reference_t<Number>>>)
+      if constexpr(std::is_integral_v<std::decay_t<decltype(data)>> and 
+                   std::is_integral_v<std::decay_t<Number>>)
                     return (data & value);
       else
         return false;
