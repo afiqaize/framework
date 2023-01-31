@@ -7,6 +7,7 @@
 #define FWK_FUNCTION_UTIL_H
 
 #include "../src/Heap.h"
+#include <limits>
 #include <bitset>
 
 /// a function that performs a simple copy of the argument
