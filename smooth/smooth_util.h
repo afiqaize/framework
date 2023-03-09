@@ -240,6 +240,9 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
                     const std::vector<std::vector<double>> &fine, const std::vector<std::vector<double>> &coarse, double scale) {
     double sum = 0.;
     const auto csmooth = rebin(apply_deviation(nominal, rdev, scale), fine, coarse);
+    //auto tmpd = rdev;
+    //tmpd.scale(scale);
+    //const auto csmooth = rebin(apply_deviation(nominal, tmpd), fine, coarse);
     const auto cnominal = rebin(nominal, fine, coarse);
     const auto cvaried = rebin(varied, fine, coarse);
 
@@ -385,6 +388,7 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
   chi2_h += f_chi2(eval_n, eval_h, rdev_sm_h, fine_edges, coarse_edges, scale_h);
   chi2_l += (oneside) ? 0. : f_chi2(eval_n, eval_l, rdev_sm_l, fine_edges, coarse_edges, scale_l);
   /*
+  std::cout << "single_pass_smooth\n";
   std::cout << "num " << snum_h << " " << snum_l << "\n";
   std::cout << "den " << sden_h << " " << sden_l << "\n";
   std::cout << "chi2 sum " << chi2_h << " " << chi2_l << "\n";
