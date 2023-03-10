@@ -7,7 +7,7 @@ COMPILER = g++
 SAVE_TEMPS = false
 DEBUG = false
 
-CXXFLAGS = $(shell root-config --cflags --evelibs) $(shell gsl-config --cflags --libs) -std=c++17 -O3 -Wall -Wextra -Wpedantic -Werror -Wno-float-equal -Wno-sign-compare -Wfatal-errors
+CXXFLAGS = $(shell root-config --cflags --evelibs) $(shell gsl-config --cflags --libs) -std=c++17 -O3 -Wall -Wextra -Wpedantic -Werror -Wno-float-equal -Wno-sign-compare -Wfatal-errors -Wno-narrowing
 FWK_INCLUDES = -I $(FWK_BASE_DIR)/plugins/ -I $(FWK_BASE_DIR)/src/
 
 

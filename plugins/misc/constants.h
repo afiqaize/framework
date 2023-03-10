@@ -9,6 +9,9 @@
 namespace Framework {
   namespace constants {
     template <typename T = float>
+    constexpr T one        = T(1);
+
+    template <typename T = float>
     constexpr T sqrt2      = T(1.4142135623730950488L);
 
     template <typename T = float>

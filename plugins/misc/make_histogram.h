@@ -13,9 +13,14 @@
 #include "container_util.h"
 #include "function_util.h"
 #include "rng_util.h"
+#include "constants.h"
 
 #include "array_histogram.h"
 #include "output_util.h"
+
+using FwkColl = Framework::Collection<char, unsigned char, boolean,
+                                      int, unsigned int, float,
+                                      long long, unsigned long long, double>;
 
 bool valid_name(const std::string &str)
 {
@@ -29,11 +34,11 @@ bool valid_name(const std::string &str)
 /// but looks awful enough that presumably no one uses it as an actual branch name
 std::string to_constant_str(const std::string &str)
 {
-  // not that these strings have explainable, but human readability is nice
-  auto copy = "__cv__" + str; // constant value
-  replace(copy, "-", "ns"); // negative sign
-  replace(copy, "+", "");
-  replace(copy, ".", "fp"); // floating point
+  // not that these strings have to be explainable, but human readability is nice
+  auto copy = "__cv__"s + str; // constant value
+  replace(copy, "-"s, "__ns__"s); // negative sign
+  replace(copy, "+"s, ""s);
+  replace(copy, "."s, "__fp__"s); // floating point
   return copy;
 }
 
@@ -44,9 +49,9 @@ std::string to_constant_str(const std::string &str)
 double constant_str_value(const std::string &str)
 {
   auto copy = str;
-  replace(copy, "fp", ".");
-  replace(copy, "ns", "-");
-  replace(copy, "__cv__", "");
+  replace(copy, "__fp__"s, "."s);
+  replace(copy, "__ns__"s, "-"s);
+  replace(copy, "__cv__"s, ""s);
   return std::stod(copy);
 }
 
@@ -130,32 +135,32 @@ void unique_emplace(std::vector<std::vector<std::string>> &expressions, std::vec
 /// with the branch name automatically generated
 void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 {
-  static const std::vector<std::string> unaries = {"constant(",
-                                                   "exp(", "log(", "log10(",
-                                                   "sin(", "cos(", "tan(", "asin(", "acos(", "atan(",
-                                                   "sqrt(", "abs(", "negate(", "relu(", "step(", "invert("};
-  static const std::vector<std::string> binaries = {"*", "/", "+", "-"};
+  static const std::vector<std::string> unaries = {"constant("s,
+                                                   "exp("s, "log("s, "log10("s,
+                                                   "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s,
+                                                   "sqrt("s, "abs("s, "negate("s, "relu("s, "step("s, "invert("s};
+  static const std::vector<std::string> binaries = {"*"s, "/"s, "+"s, "-"s};
 
   // decompose expressions like a + b + c + d + e -> f + c + d + e -> g + d + e -> h + e...
   // the refs are what needs to be kept track of for the inplace edits within loop body
   // iop and icl are opening and closing indices of the part of string to analyze 
   auto decompose_binaries = [] (std::vector<std::vector<std::string>> &expressions, std::string &exp, std::string &part,
                                 std::vector<std::string> &elem, std::string::size_type iop, std::string::size_type icl) {
-    auto imd = min(exp.find("*", iop), exp.find("/", iop));
+    auto imd = min(exp.find("*"s, iop), exp.find("/"s, iop));
     if (imd > icl)
       imd = std::string::npos;
 
     if (imd != std::string::npos) {
-      auto ipm1 = min(exp.find("+", iop), exp.find("-", iop));
-      auto ibi = min(exp.find("+", imd + 1), exp.find("-", imd + 1), exp.find("*", imd + 1), exp.find("/", imd + 1));
+      auto ipm1 = min(exp.find("+"s, iop), exp.find("-"s, iop));
+      auto ibi = min(exp.find("+"s, imd + 1), exp.find("-"s, imd + 1), exp.find("*"s, imd + 1), exp.find("/"s, imd + 1));
 
       if (ipm1 > imd)
         part = exp.substr(iop, (ibi < icl) ? ibi - iop : icl - iop);
       else {
-        auto ipm2 = min(exp.find("+", ipm1 + 1), exp.find("-", ipm1 + 1));
+        auto ipm2 = min(exp.find("+"s, ipm1 + 1), exp.find("-"s, ipm1 + 1));
         while (ipm2 < imd) {
           ipm1 = ipm2;
-          ipm2 = min(exp.find("+", ipm1 + 1), exp.find("-", ipm1 + 1));
+          ipm2 = min(exp.find("+"s, ipm1 + 1), exp.find("-"s, ipm1 + 1));
         }
 
         part = exp.substr(ipm1 + 1, (ibi < icl) ? ibi - ipm1 - 1 : icl - ipm1 - 1);
@@ -169,12 +174,12 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
       }
     }
     else {
-      auto ipm1 = min(exp.find("+", iop), exp.find("-", iop));
+      auto ipm1 = min(exp.find("+"s, iop), exp.find("-"s, iop));
       if (ipm1 > icl)
         imd = std::string::npos;
 
       if (ipm1 != std::string::npos) {
-        auto ipm2 = min(exp.find("+", ipm1 + 1), exp.find("-", ipm1 + 1));
+        auto ipm2 = min(exp.find("+"s, ipm1 + 1), exp.find("-"s, ipm1 + 1));
         part = exp.substr(iop, (ipm2 < icl) ? ipm2 - iop : icl - iop);
 
         auto belem = is_elementary(part, unaries, binaries);
@@ -192,14 +197,14 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
   const int nvar = expressions.size();
   for (int ivar = 0; ivar < nvar; ++ivar) {
     auto &exp = expressions[ivar][1];
-    if (exp == "")
+    if (exp == ""s)
       continue;
 
     // constants parsing in expression need some hacks, do that first
     // done by transforming them a technically valid (but looking so nonsensical that hopefully no none uses it) variable name
     auto iconstant = exp.find(unaries[0]);
     while (iconstant != std::string::npos) {
-      auto iclose = exp.find(")", iconstant + unaries[0].length());
+      auto iclose = exp.find(")"s, iconstant + unaries[0].length());
       auto real_value_str = exp.substr(iconstant + unaries[0].length(), iclose - iconstant - unaries[0].length());
       auto value_str = to_constant_str(real_value_str);
       replace(exp, real_value_str, value_str, iconstant);
@@ -215,29 +220,29 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
     auto branches = split_if(cexp, [] (unsigned char c) { return std::isalnum(c) or c == '_'; });
     for (auto &branch : branches) {
       if (std::find_if(std::begin(expressions), std::end(expressions), [&branch] (auto &var) { return var[0] == branch; }) == std::end(expressions))
-        expressions.emplace_back(std::vector<std::string>{branch, ""});
+        expressions.emplace_back(std::vector<std::string>{branch, ""s});
     }
 
     auto elem = is_elementary(exp, unaries, binaries);
-    std::string part = "";
+    std::string part = ""s;
     while (elem.empty()) {
       // a flag to indicate that an elementary expression is found and dumped into expression list
       // due to the inplace editing, we want to be analyzing it in a fresh iteration
       bool dumped = false;
 
       // find innermost opening and closing brackets
-      auto nop = count_substring(exp, "("), ncl = count_substring(exp, ")");
+      auto nop = count_substring(exp, "("s), ncl = count_substring(exp, ")"s);
       if (nop != ncl) {
-        std::cerr << "Expression " << exp << " is invalid due to non-matching parenthesis. skipping..." << std::endl;
+        std::cerr << "Expression "s << exp << " is invalid due to non-matching parenthesis. skipping..."s << std::endl;
         return;
       }
 
       if (nop > 0) {
-        auto iop1 = exp.find("("), icl = exp.find(")");
-        auto iop2 = exp.find("(", iop1 + 1);
+        auto iop1 = exp.find("("s), icl = exp.find(")"s);
+        auto iop2 = exp.find("("s, iop1 + 1);
         while (iop2 < icl) {
           iop1 = iop2;
-          iop2 = exp.find("(", iop1 + 1);
+          iop2 = exp.find("("s, iop1 + 1);
         }
 
         // check whether it is an elementary unary
@@ -300,43 +305,43 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
   std::vector<std::vector<double>> cedges, fedges;
 
   for (const auto &var : variables) {
-    auto veb = split(var, ":");
+    auto veb = split(var, ":"s);
     if (veb.size() != 2) {
-      std::cerr << "Variable or expression " << var << " is invalid" << std::endl;
+      std::cerr << "Variable or expression "s << var << " is invalid"s << std::endl;
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
-    auto ve = split(veb[0], "=");
+    auto ve = split(veb[0], "="s);
     if (ve.size() != 1 and ve.size() != 2) {
-      std::cerr << "Variable or expression " << veb[0] << " is invalid" << std::endl;
+      std::cerr << "Variable or expression "s << veb[0] << " is invalid"s << std::endl;
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
     strip(ve[0]);
     if (not valid_name(ve[0])) {
-      std::cerr << "Invalid variable name " << ve[0] << ". Aborting. Current version considers only names containing " 
-        "alphanumeric characters or underscores"<< std::endl;
+      std::cerr << "Invalid variable name "s << ve[0] << ". Aborting. Current version considers only names containing " 
+        "alphanumeric characters or underscores"s << std::endl;
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
     if (ve.size() == 2)
       strip(ve[1]);
     else
-      ve.emplace_back("");
+      ve.emplace_back(""s);
     expressions.emplace_back(std::move(ve));
 
-    auto binstyle = split(veb[1], ";");
+    auto binstyle = split(veb[1], ";"s);
     int nbinf = (binstyle.size() == 2) ? std::stoi(binstyle[0]) : 0;
     const auto [minf, maxf] = [&binstyle] () {
-      const auto minmax = (binstyle.size() == 2) ? split(binstyle[1], ",") : std::vector<std::string>{};
+      const auto minmax = (binstyle.size() == 2) ? split(binstyle[1], ","s) : std::vector<std::string>{};
       return (minmax.size() == 2) ? std::make_pair(std::stod(minmax[0]), std::stod(minmax[1])) : std::make_pair(0., 0.); 
     } ();
 
     const auto cedge = [&binning = veb[1]] {
       std::vector<double> cedge;
-      if (contain(binning, ";"))
+      if (contain(binning, ";"s))
         return cedge;
 
-      const auto binrng = split(binning, ",");
+      const auto binrng = split(binning, ","s);
       for (const auto &edge : binrng)
         cedge.emplace_back(std::stod(edge));
       return cedge;
@@ -357,53 +362,53 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       cedges.emplace_back( std::move(cedge) );
     }
     else {
-      std::cerr << "Binning information for variable  " << ve[0] << " is invalid. Note that variables with only one bin is not accepted" << std::endl;
+      std::cerr << "Binning information for variable  "s << ve[0] << " is invalid. Note that variables with only one bin is not accepted"s << std::endl;
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
   }
 
-  auto we = split(weight, "=");
+  auto we = split(weight, "="s);
   strip(we[0]);
-  if (weight != "") {
+  if (weight != ""s) {
     if (valid_name(we[0])) {
       if (we.size() == 2)
         strip(we[1]);
       else
-        we.emplace_back("");
+        we.emplace_back(""s);
       expressions.emplace_back(we);
     }
     else {
-      std::cerr << "Invalid weight name " << we[0] << ". Ignoring the weight. Current version considers only names containing " 
-        "alphanumeric characters or underscores" << std::endl;
+      std::cerr << "Invalid weight name "s << we[0] << ". Ignoring the weight. Current version considers only names containing " 
+        "alphanumeric characters or underscores"s << std::endl;
     }
   }
 
-  /**** start testing of expression parser ****
+  /**** start testing of expression parser ****/
   for (auto &exp : expressions) {
     for (auto &var : exp)
-      std::cout << var << " -- ";
+      std::cout << var << " -- "s;
     std::cout << std::endl;
   }
-  std::cout << "     ----------------     " << std::endl;
-  ****/
+  std::cout << "     ----------------     "s << std::endl;
+  /****/
   parse_expressions(expressions);
-  /****
+  /****/
   for (auto &exp : expressions) {
     for (auto &var : exp)
-      std::cout << var << " -- ";
+      std::cout << var << " -- "s;
     std::cout << std::endl;
   }
-  std::cout << "     ----------------     " << std::endl;
-  ****  end testing of expression parser  ****/
+  std::cout << "     ----------------     "s << std::endl;
+  /****  end testing of expression parser  ****/
 
-  Dataset<TChain> dataset("dataset", tree);
+  Dataset<TChain> dataset("dataset"s, tree);
   dataset.set_files(files);
 
-  // tag source branches i.e. those coming from source root file, which may be float
+  // tag source branches i.e. those coming from source root file, which may not be double
   std::vector<std::string> branches;
-  Collection<float, double> src("src", expressions.size());
+  FwkColl src("src"s, expressions.size());
   for (const auto &var : expressions) {
-    if (var.size() == 2 and var[1] == "" and not contain(var[0], "__cv__")) {
+    if (var.size() == 2 and var[1] == ""s and not contain(var[0], "__cv__"s)) {
       src.add_attribute(var[0], var[0]);
       branches.emplace_back(var[0]);
     }
@@ -412,24 +417,50 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
 
   // promote source attributes to double if float
   for (const auto &branch : branches) {
-    const bool isfloat = src.get_if<float>(branch) != nullptr;
+    const bool not_double = src.get_if<double>(branch) == nullptr;
 
-    if (isfloat) {
+    if (not_double) {
       auto name = random_variable_name(3);
       while (std::find_if(std::begin(expressions), std::end(expressions), [&name] (auto &var) { return var[0] == name; }) != std::end(expressions))
         name = random_variable_name(3);
 
       auto ib = std::find_if(std::begin(expressions), std::end(expressions), [&branch] (auto &var) { return var[0] == branch; });
       (*ib)[0] = name;
-      (*ib)[1] = "__source__(";
+      (*ib)[1] = "__source__("s;
       ib->emplace_back(branch);
+      // FIXME add type info here
+      std::cout << "promoting "s << branch << " to "s << name << std::endl;
 
-      expressions.emplace_back(std::vector<std::string>{branch, "__promote__(", name});
+      expressions.emplace_back(std::vector<std::string>{branch, "__promote__("s, name});
     }
   }
 
+  for (auto &exp : expressions) {
+    for (auto &var : exp)
+      std::cout << var << " -- "s;
+    std::cout << std::endl;
+  }
+  std::cout << "     ----------------     "s << std::endl;
+
   return std::make_tuple(std::move(expressions), std::move(cedges), std::move(fedges), we[0]);
 }
+
+
+
+/// convenience
+template <typename T>
+double promote_to_double(T arg)
+{
+  return double{arg};
+}
+template double promote_to_double(char);
+template double promote_to_double(unsigned char);
+template double promote_to_double(boolean);
+template double promote_to_double(int);
+template double promote_to_double(unsigned int);
+template double promote_to_double(float);
+template double promote_to_double(long long);
+template double promote_to_double(unsigned long long);
 
 
 
@@ -443,29 +474,46 @@ auto make_collection(const std::tuple<
   using namespace Framework;
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
-    throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting." );
+    throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting."s );
 
-  Collection<float, double> coll("coll", variables.size());
+  FwkColl coll("coll"s, variables.size());
   for (const auto &var : variables) {
-    if (var.size() == 2 and var[1] == "" and not contain(var[0], "__cv__"))
+    if (var.size() == 2 and var[1] == ""s and not contain(var[0], "__cv__"s))
       coll.add_attribute(var[0], var[0], 1.);
-    else if (var.size() > 2 and var[1] == "__source__(")
-      coll.add_attribute(var[0], var[2], 1.f);
+    else if (var.size() > 2 and var[1] == "__source__("s) {
+      // FIXME CANT KNOW SIZE OF SOURCE WITHOUT ADDING IT
+      if (coll.get_if<char>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<char>);
+      else if (coll.get_if<unsigned char>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<unsigned char>);
+      else if (coll.get_if<boolean>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], boolean{true});
+      else if (coll.get_if<int>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<int>);
+      else if (coll.get_if<unsigned int>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<unsigned int>);
+      else if (coll.get_if<float>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<float>);
+      else if (coll.get_if<long long>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<long long>);
+      else if (coll.get_if<unsigned long long>(var[2]) != nullptr)
+        coll.add_attribute(var[0], var[2], constants::one<unsigned long long>);
+    }
   }
 
   // constant(...) declares a new attribute, but doesn't introduce one itself
   // while variables contain an entry for the dummy constant (due to the limited string parsing we use here), that we need to correct for
-  const int nconst = std::count_if( std::begin(variables), std::end(variables), [] (const auto &var) {return contain(var[0], "__cv__");} );
+  const int nconst = std::count_if( std::begin(variables), std::end(variables), [] (const auto &var) {return contain(var[0], "__cv__"s);} );
   while (coll.n_attributes() + nconst != variables.size()) {
     for (const auto &var : variables) {
       if (var.size() > 2) {
         bool isthere = true;
 
         for (int iarg = 2; iarg < var.size(); ++iarg)
-          isthere = isthere and (coll.has_attribute(var[iarg]) or var[1] == "constant(");
+          isthere = isthere and (coll.has_attribute(var[iarg]) or var[1] == "constant("s);
 
         if (isthere) {
-          if (var[1] == "constant(") {
+          if (var[1] == "constant("s) {
             const auto attrs = coll.attributes();
             for (auto &attr : attrs) {
               if (coll.get_if<double>(attr) != nullptr) {
@@ -476,47 +524,63 @@ auto make_collection(const std::tuple<
             }
           }
 
-          else if (var[1] == "exp(")
+          else if (var[1] == "exp("s)
             coll.transform_attribute(var[0], [] (double x) {return std::exp(x);}, var[2]);
-          else if (var[1] == "log(")
+          else if (var[1] == "log("s)
             coll.transform_attribute(var[0], [] (double x) {return std::log(x);}, var[2]);
-          else if (var[1] == "log10(")
+          else if (var[1] == "log10("s)
             coll.transform_attribute(var[0], [] (double x) {return std::log10(x);}, var[2]);
-          else if (var[1] == "sin(")
+          else if (var[1] == "sin("s)
             coll.transform_attribute(var[0], [] (double x) {return std::sin(x);}, var[2]);
-          else if (var[1] == "cos(")
+          else if (var[1] == "cos("s)
             coll.transform_attribute(var[0], [] (double x) {return std::cos(x);}, var[2]);
-          else if (var[1] == "tan(")
+          else if (var[1] == "tan("s)
             coll.transform_attribute(var[0], [] (double x) {return std::tan(x);}, var[2]);
-          else if (var[1] == "asin(")
+          else if (var[1] == "asin("s)
             coll.transform_attribute(var[0], [] (double x) {return std::asin(x);}, var[2]);
-          else if (var[1] == "acos(")
+          else if (var[1] == "acos("s)
             coll.transform_attribute(var[0], [] (double x) {return std::acos(x);}, var[2]);
-          else if (var[1] == "atan(")
+          else if (var[1] == "atan("s)
             coll.transform_attribute(var[0], [] (double x) {return std::atan(x);}, var[2]);
-          else if (var[1] == "sqrt(")
+          else if (var[1] == "sqrt("s)
             coll.transform_attribute(var[0], [] (double x) {return std::sqrt(x);}, var[2]);
-          else if (var[1] == "abs(")
+          else if (var[1] == "abs("s)
             coll.transform_attribute(var[0], [] (double x) {return std::abs(x);}, var[2]);
-          else if (var[1] == "negate(")
+          else if (var[1] == "negate("s)
             coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
-          else if (var[1] == "relu(")
+          else if (var[1] == "relu("s)
             coll.transform_attribute(var[0], [] (double x) {return std::max(0., x);}, var[2]);
-          else if (var[1] == "step(")
+          else if (var[1] == "step("s)
             coll.transform_attribute(var[0], [] (double x) {return x > 0. ? 1. : 0.;}, var[2]);
-          else if (var[1] == "invert(")
+          else if (var[1] == "invert("s)
             coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
 
-          else if (var[1] == "__promote__(")
-            coll.transform_attribute(var[0], [] (float x) {return double(x);}, var[2]);
+          else if (var[1] == "__promote__("s) {
+            if (coll.get_if<char>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<char>, var[2]);
+            else if (coll.get_if<unsigned char>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<unsigned char>, var[2]);
+            else if (coll.get_if<boolean>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<boolean>, var[2]);
+            else if (coll.get_if<int>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<int>, var[2]);
+            else if (coll.get_if<unsigned int>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<unsigned int>, var[2]);
+            else if (coll.get_if<float>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<float>, var[2]);
+            else if (coll.get_if<long long>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<long long>, var[2]);
+            else if (coll.get_if<unsigned long long>(var[2]) != nullptr)
+              coll.transform_attribute(var[0], promote_to_double<unsigned long long>, var[2]);
+          }
 
-          else if (var[1] == "+")
+          else if (var[1] == "+"s)
             coll.transform_attribute(var[0], [] (double x, double y) {return x + y;}, var[2], var[3]);
-          else if (var[1] == "-")
+          else if (var[1] == "-"s)
             coll.transform_attribute(var[0], [] (double x, double y) {return x - y;}, var[2], var[3]);
-          else if (var[1] == "*")
+          else if (var[1] == "*"s)
             coll.transform_attribute(var[0], [] (double x, double y) {return x * y;}, var[2], var[3]);
-          else if (var[1] == "/")
+          else if (var[1] == "/"s)
             coll.transform_attribute(var[0], [] (double x, double y) {return x / y;}, var[2], var[3]);
         }
       }
@@ -534,7 +598,7 @@ auto make_collection(const std::tuple<
 /// under- and overflows are automatically added to the first and last bins along the relevant axis respectively
 /// iedge denote which binning to be used, 1 for the first binning held by variables_bins, 2 is second
 std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
-                                     Framework::Collection<float, double> &coll,
+                                     FwkColl &coll,
                                      const std::tuple<
                                      std::vector<std::vector<std::string>>,
                                      std::vector<std::vector<double>>,
@@ -557,9 +621,18 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
 
   const auto ivars = [&variables, &nvar, &coll] () {
     std::vector<int> ivars(nvar);
-    for (int ivar = 0; ivar < nvar; ++ivar)
-      ivars[ivar] = coll.inquire(variables[ivar][0]);
+    for (int ivar = 0; ivar < nvar; ++ivar) {
+      if (variables[ivar].size() > 1 and variables[ivar][1] != "__source__("s)
+        ivars[ivar] = coll.inquire(variables[ivar][0]);
+      else {
+        auto iv = std::find_if(std::begin(variables), std::end(variables),
+                               [&src = variables[ivar][0]] (auto &&var) { return var[1] == "__promote__("s and var[2] == src; });
+        if (iv == std::end(variables))
+          throw std::runtime_error( "ERROR: count_and_bin :: can't find the promoted attribute. Aborting."s );
 
+        ivars[ivar] = coll.inquire((*iv)[0]);
+      }
+    }
     return ivars;
   }();
 
@@ -646,16 +719,16 @@ void make_histogram_set(const std::vector<std::string> &files,
                         char restype, const std::string &output)
 {
   auto variables_bins = variables_and_binning(variables, weight, files, tree);
-  Framework::Dataset<TChain> dataset("dataset", tree);
+  Framework::Dataset<TChain> dataset("dataset"s, tree);
   dataset.set_files(files);
   auto coll = make_collection(variables_bins);
   auto histogram = count_and_bin(dataset, coll, variables_bins, 1, 1);
 
-  const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"}},
+  const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"s}},
                                       std::vector<std::vector<double>>{ make_interval(0., double(std::get<1>(variables_bins).size()), 1.) },
                                       std::vector<std::vector<double>>{}, std::string{});
 
-  save_all_as(output, array_to_root(variables_bins, "", std::get<1>(variables_bins), histogram[0], restype), array_to_root(nbvars, "nbin", std::get<1>(nbvars), nbin_hist(variables_bins)));
+  save_all_as(output, array_to_root(variables_bins, ""s, std::get<1>(variables_bins), histogram[0], restype), array_to_root(nbvars, "nbin"s, std::get<1>(nbvars), nbin_hist(variables_bins)));
 }
 
 #endif
