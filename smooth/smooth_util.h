@@ -464,9 +464,9 @@ auto bandwidth_to_hist(const std::vector<std::vector<int>> &bandwidths, const st
 auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
                            Framework::Dataset<TChain> &data_h,
                            Framework::Dataset<TChain> &data_l,
-                           Framework::Collection<float, double> &coll_n,
-                           Framework::Collection<float, double> &coll_h,
-                           Framework::Collection<float, double> &coll_l,
+                           FwkColl &coll_n,
+                           FwkColl &coll_h,
+                           FwkColl &coll_l,
                            const std::tuple<
                            std::vector<std::vector<std::string>>,
                            std::vector<std::vector<double>>,
@@ -622,7 +622,7 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
       }
     };
 
-    auto f_fill_coll = [npartition] (Framework::Dataset<TChain> &data, Framework::Collection<float, double> &coll,
+    auto f_fill_coll = [npartition] (Framework::Dataset<TChain> &data, FwkColl &coll,
                                      const std::tuple<
                                      std::vector<std::vector<std::string>>,
                                      std::vector<std::vector<double>>,
@@ -649,8 +649,10 @@ auto smooth_templates_impl(Framework::Dataset<TChain> &data_n,
         //threads[1] = std::thread(f_fill_coll, std::ref(data_h), std::ref(coll_h), std::cref(variables_h), std::ref(trev_h));
         //threads[2] = std::thread(f_fill_coll, std::ref(data_l), std::ref(coll_l), std::cref(variables_l), std::ref(trev_l));
 
-        // FIXME something about Allocator/TTree::Notify() is not thread safe, so this crashes when there are >1 files
-        // use single thread for now, the loops are fast enough
+        // FIXME/TODO something about Allocator/TTree::Notify() (ie the ROOT level) is not thread safe, so this crashes when there are >1 files
+        // another option is to split the datasets into single files
+        // but this is best done internally at fwk level
+        // use single thread for now
         f_fill_coll(data_n, coll_n, variables_n, trev_n);
         f_fill_coll(data_h, coll_h, variables_h, trev_h);
         if (not oneside)
