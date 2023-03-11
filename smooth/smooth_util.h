@@ -858,8 +858,8 @@ void smooth_templates(const std::vector<std::string> &files,
 
   Framework::Dataset<TChain> data_n("data_n", tree);
   data_n.set_files(files);
-  auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0], files, tree);
-  auto coll_n = make_collection(variables_n);
+  auto variables_n = variables_and_binning(variables, (weight.empty()) ? "" : weight[0]);
+  auto coll_n = make_collection(variables_n, files, tree);
 
   // FIXME implement equiprobable binning and bin map editing here?
 
@@ -871,8 +871,8 @@ void smooth_templates(const std::vector<std::string> &files,
 
   Framework::Dataset<TChain> data_h("data_h", tree);
   data_h.set_files(fvary_h);
-  auto variables_h = variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[1], fvary_h, tree);
-  auto coll_h = make_collection(variables_h);
+  auto variables_h = variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[1]);
+  auto coll_h = make_collection(variables_h, fvary_h, tree);
 
   auto fvary_l = fvary_h;
   if (not oneside and type == "tree") {
@@ -881,8 +881,8 @@ void smooth_templates(const std::vector<std::string> &files,
   }
   Framework::Dataset<TChain> data_l("data_l", tree);
   data_l.set_files(fvary_l);
-  auto variables_l = (oneside) ? variables_h : variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[2], fvary_l, tree);
-  auto coll_l = make_collection(variables_l);
+  auto variables_l = (oneside) ? variables_h : variables_and_binning(variables, (weight.empty()) ? "" : (weight.size() == 1) ? weight[0] : weight[2]);
+  auto coll_l = make_collection(variables_l, fvary_l, tree);
 
   if (not fixed_bandwidth.empty()) {
     std::cout << "Fixed bandwidth mode detected. Ignoring --npartition and --nrepeatcv options..." << std::endl;

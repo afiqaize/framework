@@ -73,10 +73,10 @@ namespace Framework {
     /// populate the data with information read from the branches
     void populate(long long entry) override;
 
-  protected:
     /// detach the branches
     void detach();
 
+  protected:
     /// TBranch isn't enough for realloc, so Collection needs to remember its tree
     TTree *tree;
 

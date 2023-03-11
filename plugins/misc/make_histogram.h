@@ -18,7 +18,7 @@
 #include "array_histogram.h"
 #include "output_util.h"
 
-using FwkColl = Framework::Collection<char, unsigned char, boolean,
+using FwkColl = Framework::Collection<boolean,
                                       int, unsigned int, float,
                                       long long, unsigned long long, double>;
 
@@ -137,8 +137,8 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 {
   static const std::vector<std::string> unaries = {"constant("s,
                                                    "exp("s, "log("s, "log10("s,
-                                                   "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s,
-                                                   "sqrt("s, "abs("s, "negate("s, "relu("s, "step("s, "invert("s};
+                                                   "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s, "sqrt("s, "abs("s,
+                                                   "negate("s, "relu("s, "step("s, "invert("s, "not("s};
   static const std::vector<std::string> binaries = {"*"s, "/"s, "+"s, "-"s};
 
   // decompose expressions like a + b + c + d + e -> f + c + d + e -> g + d + e -> h + e...
@@ -294,7 +294,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 /// third is fine binning, i.e. coarse split into n bins along each dimension, n being dimension-specific
 /// in any case where anything is invalid, returned output is blank
 /// segfaults at dataset.analyze() if the source promotion is done within make_collection for yet to be understood reasons
-auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight, const std::vector<std::string> &files, const std::string &tree)
+auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight)
 {
   using namespace Framework;
 
@@ -383,84 +383,26 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
     }
   }
 
-  /**** start testing of expression parser ****/
+  /**** start testing of expression parser ****
   for (auto &exp : expressions) {
     for (auto &var : exp)
       std::cout << var << " -- "s;
     std::cout << std::endl;
   }
   std::cout << "     ----------------     "s << std::endl;
-  /****/
+  ****/
   parse_expressions(expressions);
-  /****/
+  /****
   for (auto &exp : expressions) {
     for (auto &var : exp)
       std::cout << var << " -- "s;
     std::cout << std::endl;
   }
   std::cout << "     ----------------     "s << std::endl;
-  /****  end testing of expression parser  ****/
-
-  Dataset<TChain> dataset("dataset"s, tree);
-  dataset.set_files(files);
-
-  // tag source branches i.e. those coming from source root file, which may not be double
-  std::vector<std::string> branches;
-  FwkColl src("src"s, expressions.size());
-  for (const auto &var : expressions) {
-    if (var.size() == 2 and var[1] == ""s and not contain(var[0], "__cv__"s)) {
-      src.add_attribute(var[0], var[0]);
-      branches.emplace_back(var[0]);
-    }
-  }
-  dataset.associate(src);
-
-  // promote source attributes to double if float
-  for (const auto &branch : branches) {
-    const bool not_double = src.get_if<double>(branch) == nullptr;
-
-    if (not_double) {
-      auto name = random_variable_name(3);
-      while (std::find_if(std::begin(expressions), std::end(expressions), [&name] (auto &var) { return var[0] == name; }) != std::end(expressions))
-        name = random_variable_name(3);
-
-      auto ib = std::find_if(std::begin(expressions), std::end(expressions), [&branch] (auto &var) { return var[0] == branch; });
-      (*ib)[0] = name;
-      (*ib)[1] = "__source__("s;
-      ib->emplace_back(branch);
-      // FIXME add type info here
-      std::cout << "promoting "s << branch << " to "s << name << std::endl;
-
-      expressions.emplace_back(std::vector<std::string>{branch, "__promote__("s, name});
-    }
-  }
-
-  for (auto &exp : expressions) {
-    for (auto &var : exp)
-      std::cout << var << " -- "s;
-    std::cout << std::endl;
-  }
-  std::cout << "     ----------------     "s << std::endl;
+  ****  end testing of expression parser  ****/
 
   return std::make_tuple(std::move(expressions), std::move(cedges), std::move(fedges), we[0]);
 }
-
-
-
-/// convenience
-template <typename T>
-double promote_to_double(T arg)
-{
-  return double{arg};
-}
-template double promote_to_double(char);
-template double promote_to_double(unsigned char);
-template double promote_to_double(boolean);
-template double promote_to_double(int);
-template double promote_to_double(unsigned int);
-template double promote_to_double(float);
-template double promote_to_double(long long);
-template double promote_to_double(unsigned long long);
 
 
 
@@ -469,37 +411,26 @@ auto make_collection(const std::tuple<
                      std::vector<std::vector<std::string>>,
                      std::vector<std::vector<double>>,
                      std::vector<std::vector<double>>,
-                     std::string> &variables_bins)
+                     std::string> &variables_bins,
+                     const std::vector<std::string> &files, const std::string &tree)
 {
   using namespace Framework;
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
     throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting."s );
 
+  // initialize the collection, and add the source attributes ie those read in from root files
   FwkColl coll("coll"s, variables.size());
   for (const auto &var : variables) {
     if (var.size() == 2 and var[1] == ""s and not contain(var[0], "__cv__"s))
-      coll.add_attribute(var[0], var[0], 1.);
-    else if (var.size() > 2 and var[1] == "__source__("s) {
-      // FIXME CANT KNOW SIZE OF SOURCE WITHOUT ADDING IT
-      if (coll.get_if<char>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<char>);
-      else if (coll.get_if<unsigned char>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<unsigned char>);
-      else if (coll.get_if<boolean>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], boolean{true});
-      else if (coll.get_if<int>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<int>);
-      else if (coll.get_if<unsigned int>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<unsigned int>);
-      else if (coll.get_if<float>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<float>);
-      else if (coll.get_if<long long>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<long long>);
-      else if (coll.get_if<unsigned long long>(var[2]) != nullptr)
-        coll.add_attribute(var[0], var[2], constants::one<unsigned long long>);
-    }
+      coll.add_attribute(var[0], var[0]);
   }
+
+  // figure out the types of the attributes based on the first file in dataset
+  Dataset<TChain> dataset("dataset"s, tree);
+  dataset.set_files(files, 1);
+  dataset.associate(coll);
+  coll.detach();
 
   // constant(...) declares a new attribute, but doesn't introduce one itself
   // while variables contain an entry for the dummy constant (due to the limited string parsing we use here), that we need to correct for
@@ -523,65 +454,61 @@ auto make_collection(const std::tuple<
               }
             }
           }
+          else {
+            if (var.size() > 3) {
+              std::visit([&coll, &var] (auto &&arg1, auto &&arg2) {
+                           using arg_type1 = typename std::decay_t<decltype(arg1)>::value_type;
+                           using arg_type2 = typename std::decay_t<decltype(arg2)>::value_type;
 
-          else if (var[1] == "exp("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::exp(x);}, var[2]);
-          else if (var[1] == "log("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::log(x);}, var[2]);
-          else if (var[1] == "log10("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::log10(x);}, var[2]);
-          else if (var[1] == "sin("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::sin(x);}, var[2]);
-          else if (var[1] == "cos("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::cos(x);}, var[2]);
-          else if (var[1] == "tan("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::tan(x);}, var[2]);
-          else if (var[1] == "asin("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::asin(x);}, var[2]);
-          else if (var[1] == "acos("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::acos(x);}, var[2]);
-          else if (var[1] == "atan("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::atan(x);}, var[2]);
-          else if (var[1] == "sqrt("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::sqrt(x);}, var[2]);
-          else if (var[1] == "abs("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::abs(x);}, var[2]);
-          else if (var[1] == "negate("s)
-            coll.transform_attribute(var[0], [] (double x) {return -x;}, var[2]);
-          else if (var[1] == "relu("s)
-            coll.transform_attribute(var[0], [] (double x) {return std::max(0., x);}, var[2]);
-          else if (var[1] == "step("s)
-            coll.transform_attribute(var[0], [] (double x) {return x > 0. ? 1. : 0.;}, var[2]);
-          else if (var[1] == "invert("s)
-            coll.transform_attribute(var[0], [] (double x) {return 1. / x;}, var[2]);
+                           if (var[1] == "+"s)
+                             coll.transform_attribute(var[0], binaries::add<arg_type1, arg_type2>(), var[2], var[3]);
+                           else if (var[1] == "-"s)
+                             coll.transform_attribute(var[0], binaries::subtract<arg_type1, arg_type2>(), var[2], var[3]);
+                           else if (var[1] == "*"s)
+                             coll.transform_attribute(var[0], binaries::multiply<arg_type1, arg_type2>(), var[2], var[3]);
+                           else if (var[1] == "/"s)
+                             coll.transform_attribute(var[0], binaries::divide<arg_type1, arg_type2>(), var[2], var[3]);
+              }, coll(var[2]), coll(var[3]));
+            }
+            else if (var.size() > 2) {
+              std::visit([&coll, &var] (auto &&arg) {
+                           using arg_type = typename std::decay_t<decltype(arg)>::value_type;
 
-          else if (var[1] == "__promote__("s) {
-            if (coll.get_if<char>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<char>, var[2]);
-            else if (coll.get_if<unsigned char>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<unsigned char>, var[2]);
-            else if (coll.get_if<boolean>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<boolean>, var[2]);
-            else if (coll.get_if<int>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<int>, var[2]);
-            else if (coll.get_if<unsigned int>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<unsigned int>, var[2]);
-            else if (coll.get_if<float>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<float>, var[2]);
-            else if (coll.get_if<long long>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<long long>, var[2]);
-            else if (coll.get_if<unsigned long long>(var[2]) != nullptr)
-              coll.transform_attribute(var[0], promote_to_double<unsigned long long>, var[2]);
+                           if (var[1] == "exp("s)
+                             coll.transform_attribute(var[0], unaries::exp<arg_type>(), var[2]);
+                           else if (var[1] == "log("s)
+                             coll.transform_attribute(var[0], unaries::log<arg_type>(), var[2]);
+                           else if (var[1] == "log10("s)
+                             coll.transform_attribute(var[0], unaries::log10<arg_type>(), var[2]);
+                           else if (var[1] == "sin("s)
+                             coll.transform_attribute(var[0], unaries::sin<arg_type>(), var[2]);
+                           else if (var[1] == "cos("s)
+                             coll.transform_attribute(var[0], unaries::cos<arg_type>(), var[2]);
+                           else if (var[1] == "tan("s)
+                             coll.transform_attribute(var[0], unaries::tan<arg_type>(), var[2]);
+                           else if (var[1] == "asin("s)
+                             coll.transform_attribute(var[0], unaries::asin<arg_type>(), var[2]);
+                           else if (var[1] == "acos("s)
+                             coll.transform_attribute(var[0], unaries::acos<arg_type>(), var[2]);
+                           else if (var[1] == "atan("s)
+                             coll.transform_attribute(var[0], unaries::atan<arg_type>(), var[2]);
+                           else if (var[1] == "sqrt("s)
+                             coll.transform_attribute(var[0], unaries::sqrt<arg_type>(), var[2]);
+                           else if (var[1] == "abs("s)
+                             coll.transform_attribute(var[0], unaries::abs<arg_type>(), var[2]);
+                           else if (var[1] == "negate("s)
+                             coll.transform_attribute(var[0], unaries::negate<arg_type>(), var[2]);
+                           else if (var[1] == "relu("s)
+                             coll.transform_attribute(var[0], unaries::relu<arg_type>(), var[2]);
+                           else if (var[1] == "step("s)
+                             coll.transform_attribute(var[0], unaries::step<arg_type>(), var[2]);
+                           else if (var[1] == "invert("s)
+                             coll.transform_attribute(var[0], unaries::invert<arg_type>(), var[2]);
+                           else if (var[1] == "not("s)
+                             coll.transform_attribute(var[0], unaries::contra<arg_type>(), var[2]);
+              }, coll(var[2]));
+            }
           }
-
-          else if (var[1] == "+"s)
-            coll.transform_attribute(var[0], [] (double x, double y) {return x + y;}, var[2], var[3]);
-          else if (var[1] == "-"s)
-            coll.transform_attribute(var[0], [] (double x, double y) {return x - y;}, var[2], var[3]);
-          else if (var[1] == "*"s)
-            coll.transform_attribute(var[0], [] (double x, double y) {return x * y;}, var[2], var[3]);
-          else if (var[1] == "/"s)
-            coll.transform_attribute(var[0], [] (double x, double y) {return x / y;}, var[2], var[3]);
         }
       }
     }
@@ -622,16 +549,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
   const auto ivars = [&variables, &nvar, &coll] () {
     std::vector<int> ivars(nvar);
     for (int ivar = 0; ivar < nvar; ++ivar) {
-      if (variables[ivar].size() > 1 and variables[ivar][1] != "__source__("s)
-        ivars[ivar] = coll.inquire(variables[ivar][0]);
-      else {
-        auto iv = std::find_if(std::begin(variables), std::end(variables),
-                               [&src = variables[ivar][0]] (auto &&var) { return var[1] == "__promote__("s and var[2] == src; });
-        if (iv == std::end(variables))
-          throw std::runtime_error( "ERROR: count_and_bin :: can't find the promoted attribute. Aborting."s );
-
-        ivars[ivar] = coll.inquire((*iv)[0]);
-      }
+      ivars[ivar] = coll.inquire(variables[ivar][0]);
     }
     return ivars;
   }();
@@ -660,10 +578,10 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
 
   auto f_analyze_wgt = [&coll, &hists, &bins, &values, &ivars, nvar, iweight, &fwgt] (long long entry) {
     coll.populate(entry);
-    double wgt = coll.get<double>(iweight, 0);
 
+    auto wgt = coll.convert<double>(iweight, 0);
     for (int ivar = 0; ivar < nvar; ++ivar)
-      values[ivar] = coll.get<double>(ivars[ivar], 0);
+      values[ivar] = coll.convert<double>(ivars[ivar], 0);
 
     auto ibin = find_bin(values, bins);
     fwgt(hists, ibin, wgt);
@@ -673,7 +591,7 @@ std::vector<Arrayhist> count_and_bin(Framework::Dataset<TChain> &dataset,
     coll.populate(entry);
 
     for (int ivar = 0; ivar < nvar; ++ivar)
-      values[ivar] = coll.get<double>(ivars[ivar], 0);
+      values[ivar] = coll.convert<double>(ivars[ivar], 0);
 
     auto ibin = find_bin(values, bins);
     fone(hists, ibin);
@@ -718,10 +636,10 @@ void make_histogram_set(const std::vector<std::string> &files,
                         const std::vector<std::string> &variables, const std::string &weight,
                         char restype, const std::string &output)
 {
-  auto variables_bins = variables_and_binning(variables, weight, files, tree);
+  auto variables_bins = variables_and_binning(variables, weight);
   Framework::Dataset<TChain> dataset("dataset"s, tree);
   dataset.set_files(files);
-  auto coll = make_collection(variables_bins);
+  auto coll = make_collection(variables_bins, files, tree);
   auto histogram = count_and_bin(dataset, coll, variables_bins, 1, 1);
 
   const auto nbvars = std::make_tuple(std::vector<std::vector<std::string>>{{"variables"s}},
