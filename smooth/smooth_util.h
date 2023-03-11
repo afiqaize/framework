@@ -240,9 +240,6 @@ auto single_pass_smooth(const Arrayhist &rdev_tr_h, const Arrayhist &rdev_tr_l,
                     const std::vector<std::vector<double>> &fine, const std::vector<std::vector<double>> &coarse, double scale) {
     double sum = 0.;
     const auto csmooth = rebin(apply_deviation(nominal, rdev, scale), fine, coarse);
-    //auto tmpd = rdev;
-    //tmpd.scale(scale);
-    //const auto csmooth = rebin(apply_deviation(nominal, tmpd), fine, coarse);
     const auto cnominal = rebin(nominal, fine, coarse);
     const auto cvaried = rebin(varied, fine, coarse);
 
