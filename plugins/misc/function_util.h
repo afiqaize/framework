@@ -176,4 +176,74 @@ constexpr std::size_t last_n(std::size_t bits)
   return bits & std::bitset<N>(std::numeric_limits<std::size_t>::max()).to_ullong();
 }
 
+
+/// these are the unaries and binaries to be used in make_histogram
+/// as Framework::Group::transform_attribute needs explicit arg types
+/// which we dont know, so we simply supply the relevant binary operators
+namespace Framework {
+  namespace unaries {
+    template <typename T>
+    constexpr auto exp()    { return [] (T x) -> double {return std::exp(double(x));}; }
+
+    template <typename T>
+    constexpr auto log()    { return [] (T x) -> double {return std::log(double(x));}; }
+
+    template <typename T>
+    constexpr auto log10()  { return [] (T x) -> double {return std::log10(double(x));}; }
+
+    template <typename T>
+    constexpr auto sin()    { return [] (T x) -> double {return std::sin(double(x));}; }
+
+    template <typename T>
+    constexpr auto cos()    { return [] (T x) -> double {return std::cos(double(x));}; }
+
+    template <typename T>
+    constexpr auto tan()    { return [] (T x) -> double {return std::tan(double(x));}; }
+
+    template <typename T>
+    constexpr auto asin()   { return [] (T x) -> double {return std::asin(double(x));}; }
+
+    template <typename T>
+    constexpr auto acos()   { return [] (T x) -> double {return std::acos(double(x));}; }
+
+    template <typename T>
+    constexpr auto atan()   { return [] (T x) -> double {return std::atan(double(x));}; }
+
+    template <typename T>
+    constexpr auto sqrt()   { return [] (T x) -> double {return std::sqrt(double(x));}; }
+
+    template <typename T>
+    constexpr auto abs()    { return [] (T x) -> double {return std::abs(double(x));}; }
+
+    template <typename T>
+    constexpr auto negate() { return [] (T x) -> double {return -x;}; }
+
+    template <typename T>
+    constexpr auto relu()   { return [] (T x) -> double {return std::max(0., double(x));}; }
+
+    template <typename T>
+    constexpr auto step()   { return [] (T x) -> double {return x > 0. ? 1. : 0.;}; }
+
+    template <typename T>
+    constexpr auto invert() { return [] (T x) -> double {return 1. / x;}; }
+
+    template <typename T>
+    constexpr auto contra() { return [] (T x) -> double {return x != 0. ? 0. : 1.;}; }
+  }
+
+  namespace binaries {
+    template <typename T, typename U>
+    constexpr auto add()      { return [] (T x, U y) -> double {return x + y;}; }
+
+    template <typename T, typename U>
+    constexpr auto subtract() { return [] (T x, U y) -> double {return x - y;}; }
+
+    template <typename T, typename U>
+    constexpr auto multiply() { return [] (T x, U y) -> double {return x * y;}; }
+
+    template <typename T, typename U>
+    constexpr auto divide()   { return [] (T x, U y) -> double {return x / y;}; }
+  }
+}
+
 #endif

@@ -280,6 +280,24 @@ const T& Framework::Group<Ts...>::get(int iattr, int index) const
 
 
 template <typename ...Ts>
+template <typename T>
+T Framework::Group<Ts...>::convert(const std::string &name, int index) const
+{
+  return std::visit([index] (auto &&arg) -> T { return arg[index]; }, (*this)(name));
+}
+
+
+
+template <typename ...Ts>
+template <typename T>
+T Framework::Group<Ts...>::convert(int iattr, int index) const
+{
+  return std::visit([index] (auto &&arg) -> T { return arg[index]; }, (*this)(iattr));
+}
+
+
+
+template <typename ...Ts>
 typename Framework::Group<Ts...>::idxs Framework::Group<Ts...>::indices() const
 {
   return v_index;

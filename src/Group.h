@@ -135,6 +135,14 @@ namespace Framework {
     template <typename T>
     const T& get(int iattr, int index) const;
 
+    /// like get(attr, idx) but returns a copy converted to T, regardless of underlying type
+    template <typename T>
+    T convert(const std::string &name, int index) const;
+
+    /// known attribute index overload
+    template <typename T>
+    T convert(int iattr, int index) const;
+
     /// the associated indices to be used with the above
     idxs indices() const;
 
