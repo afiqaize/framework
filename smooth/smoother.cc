@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
                                       + "supported unary operations: \n"
                                       + "constant: pass a constant value to the code eg constant(3.14159), "
                                       + "and no, things like constant(1/2) or constant(3+11) are not accepted, since they require evaluating a binary expression\n"
+                                      + "alias: an identity function, used to alias a branch as another name\n"
                                       + "exp: e to the power of the variable\n"
                                       + "log, log10: natural and base 10 logarithms\n"
                                       + "sin, cos, tan: trigonometric\n"
