@@ -135,7 +135,7 @@ void unique_emplace(std::vector<std::vector<std::string>> &expressions, std::vec
 /// with the branch name automatically generated
 void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 {
-  static const std::vector<std::string> unaries = {"constant("s,
+  static const std::vector<std::string> unaries = {"constant("s, "alias("s,
                                                    "exp("s, "log("s, "log10("s,
                                                    "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s, "sqrt("s, "abs("s,
                                                    "negate("s, "relu("s, "step("s, "invert("s, "not("s};
@@ -415,6 +415,7 @@ auto make_collection(const std::tuple<
                      const std::vector<std::string> &files, const std::string &tree)
 {
   using namespace Framework;
+
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
     throw std::runtime_error( "ERROR: make_histogram::make_collection: variables list is empty. Aborting."s );
@@ -432,16 +433,19 @@ auto make_collection(const std::tuple<
   dataset.associate(coll);
   coll.detach();
 
-  // constant(...) declares a new attribute, but doesn't introduce one itself
-  // while variables contain an entry for the dummy constant (due to the limited string parsing we use here), that we need to correct for
+  // constant(...) declares a new attribute in the collection, but doesn't introduce one in the variable list
+  // alias(...) introduces a new variable list, but not in the collection
+  // we correct for both here, and ensure all other variables correspond to attributes in the collection
   const int nconst = std::count_if( std::begin(variables), std::end(variables), [] (const auto &var) {return contain(var[0], "__cv__"s);} );
-  while (coll.n_attributes() + nconst != variables.size()) {
+  const int nalias = std::count_if( std::begin(variables), std::end(variables), [] (const auto &var) {return var[1] == "alias("s;} );
+  while (coll.n_attributes() + nconst + nalias != variables.size()) {
+    //std::cout << coll.n_attributes() << " " << nconst << " " << nalias << " " << variables.size() << std::endl;
     for (const auto &var : variables) {
       if (var.size() > 2) {
         bool isthere = true;
 
         for (int iarg = 2; iarg < var.size(); ++iarg)
-          isthere = isthere and (coll.has_attribute(var[iarg]) or var[1] == "constant("s);
+          isthere = isthere and (coll.has_attribute(var[iarg]) or var[1] == "constant("s or (var[1] == "alias("s and coll.has_attribute(var[0])));
 
         if (isthere) {
           if (var[1] == "constant("s) {
@@ -449,6 +453,7 @@ auto make_collection(const std::tuple<
             for (auto &attr : attrs) {
               if (coll.get_if<double>(attr) != nullptr) {
                 // the hack is a workaround of transform_attribute not taking argless functions
+                // TODO check if this is optimized away by the compiler
                 coll.transform_attribute(var[0], [value = constant_str_value(var[2])] (double x) {return (x / x) * value;}, attr);
                 break;
               }
@@ -474,7 +479,9 @@ auto make_collection(const std::tuple<
               std::visit([&coll, &var] (auto &&arg) {
                            using arg_type = typename std::decay_t<decltype(arg)>::value_type;
 
-                           if (var[1] == "exp("s)
+                           if (var[1] == "alias("s)
+                             coll.alias_attribute(var[0], var[2]);
+                           else if (var[1] == "exp("s)
                              coll.transform_attribute(var[0], unaries::exp<arg_type>(), var[2]);
                            else if (var[1] == "log("s)
                              coll.transform_attribute(var[0], unaries::log<arg_type>(), var[2]);
