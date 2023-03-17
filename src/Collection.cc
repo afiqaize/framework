@@ -239,11 +239,17 @@ void Framework::Collection<Ts...>::populate(long long entry)
 template <typename ...Ts>
 void Framework::Collection<Ts...>::detach()
 {
-  if (counter_branch != nullptr)
+  if (counter_branch != nullptr) {
     counter_branch->ResetAddress();
+    counter_branch = nullptr;
+  }
 
   for (int iD = 0; iD < this->v_data.size(); ++iD) {
-    if (v_branch[iD].second != nullptr)
+    if (v_branch[iD].second != nullptr) {
       v_branch[iD].second->ResetAddress();
+      v_branch[iD].second = nullptr;
+    }
   }
+
+  tree = nullptr;
 }
