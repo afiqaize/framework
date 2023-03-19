@@ -69,7 +69,7 @@ int& Framework::Group<Ts...>::mref_to_size() noexcept
 template <typename ...Ts>
 int Framework::Group<Ts...>::n_attributes() const noexcept
 {
-  return v_attr.size();
+  return v_attr.size() + v_alias.size();
 }
 
 
@@ -166,6 +166,8 @@ std::vector<std::string> Framework::Group<Ts...>::attributes() const
 {
   std::vector<std::string> v_attr_name;
   for (const auto &attr : v_attr)
+    v_attr_name.emplace_back(attr.first);
+  for (const auto &attr : v_alias)
     v_attr_name.emplace_back(attr.first);
   return v_attr_name;
 }
