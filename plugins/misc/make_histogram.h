@@ -60,19 +60,15 @@ double constant_str_value(const std::string &str)
 /// is a string elementary or not; if yes, returns a vector of string containing its name, the operation involved and the operands
 /// unary op1(a) and single binary expressions a op2 b are both elementary, anything else are not
 /// op1/op2 can be any of the supported unary/binary operations
-/// special case unary-less expression a = b is treated as a = alias(b)
 /// and a, b are valid names i.e. containing only alphanumeric + underscores
 std::vector<std::string> is_elementary(const std::string &expression, const std::vector<std::string> &unaries, const std::vector<std::string> &binaries)
 {
+  //std::cout << "\n\n\nstart of make_histogram :: is_elementary called with expression "s << expression << std::endl;
   const auto iop = expression.find("("), icl = expression.find(")");
 
   // case without parenthesis - either a op b or just a 
   if (iop == std::string::npos and icl == std::string::npos) {
-    // treat it assuming single binary a op b, and include a check for neither single nor multi binary a op1 b op2 c ...
-    bool isbinary = false;
     for (const auto &binary : binaries) {
-      isbinary = isbinary or contain(expression, binary);
-
       auto ebi = split(expression, binary);
       if (ebi.size() == 2) {
 
@@ -80,11 +76,6 @@ std::vector<std::string> is_elementary(const std::string &expression, const std:
           return {random_variable_name(3), binary, ebi[0], ebi[1]};
       }
     }
-
-    // only unary-less and multi binary expressions reach this part
-    // remove the latter, and force the former to mean a = alias(b)
-    if (not isbinary)
-      return {random_variable_name(3), "alias(", expression};
   }
   else if (iop != std::string::npos and icl == expression.size() - 1) {
     for (const auto &unary : unaries) {
@@ -144,19 +135,15 @@ void unique_emplace(std::vector<std::vector<std::string>> &expressions, std::vec
 /// the parser transforms this into "c", "op", "a", "b", which are then used by transform_attribute
 /// in cases where the expression is a more complicated combination of the above, it first reduces it to the above
 /// with the branch name automatically generated
-void parse_expressions(std::vector<std::vector<std::string>> &expressions)
+void parse_expressions(std::vector<std::vector<std::string>> &expressions, const std::vector<std::string> &unaries, const std::vector<std::string> &binaries)
 {
-  static const std::vector<std::string> unaries = {"constant("s, "alias("s,
-                                                   "exp("s, "log("s, "log10("s,
-                                                   "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s, "sqrt("s, "abs("s,
-                                                   "negate("s, "relu("s, "step("s, "invert("s, "not("s};
-  static const std::vector<std::string> binaries = {"*"s, "/"s, "+"s, "-"s};
+  //std::cout << "\n\n\nstart of make_histogram :: parse_expressions"s << std::endl;
 
   // decompose expressions like a + b + c + d + e -> f + c + d + e -> g + d + e -> h + e...
   // the refs are what needs to be kept track of for the inplace edits within loop body
   // iop and icl are opening and closing indices of the part of string to analyze 
-  auto decompose_binaries = [] (std::vector<std::vector<std::string>> &expressions, std::string &exp, std::string &part,
-                                std::vector<std::string> &elem, std::string::size_type iop, std::string::size_type icl) {
+  auto decompose_binaries = [&unaries, &binaries] (std::vector<std::vector<std::string>> &expressions, std::string &exp, std::string &part,
+                                                   std::vector<std::string> &elem, std::string::size_type iop, std::string::size_type icl) {
     auto imd = min(exp.find("*"s, iop), exp.find("/"s, iop));
     if (imd > icl)
       imd = std::string::npos;
@@ -299,8 +286,10 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 
 
 /// splits a single expression into its parts, ready to be parsed
-auto single_expression(const std::string &expression)
+auto single_expression(const std::string &expression, const std::vector<std::string> &unaries, const std::vector<std::string> &binaries)
 {
+  //std::cout << "\n\n\nstart of make_histogram :: single_expression called with expression "s << expression << std::endl;
+
   auto lhs_rhs = split(expression, "="s);
   if (lhs_rhs.size() != 1 and lhs_rhs.size() != 2) {
     std::cerr << "Variable or expression "s << expression << " is invalid"s << std::endl;
@@ -310,14 +299,27 @@ auto single_expression(const std::string &expression)
   for (auto &s : lhs_rhs)
     strip(s);
 
-  if (not valid_name(lhs_rhs[0])) {
+  const auto &lhs = lhs_rhs[0];
+  if (not valid_name(lhs)) {
     std::cerr << "Invalid variable name "s << lhs_rhs[0] << ". Aborting. Current version considers only names containing " 
       "alphanumeric characters or underscores"s << std::endl;
     throw std::runtime_error( "ERROR: make_histogram::single_expression is provided an invalid expression. Aborting."s );
   }
 
-  if (lhs_rhs.size() == 2 and lhs_rhs[0] == lhs_rhs[1])
-    lhs_rhs[1] = ""s;
+  // further checks for should-be-valid expressions needing special handling
+  if (lhs_rhs.size() == 2) {
+    auto &rhs = lhs_rhs[1];
+
+    if (lhs == rhs)
+      rhs = ""s;
+
+    // a check for rhs being neither a unary nor binary expression
+    auto isop = [&rhs] (const auto &op) { return contain(rhs, op); };
+    const auto notunary = std::none_of(std::begin(unaries), std::end(unaries), isop);
+    const auto notbinary = std::none_of(std::begin(binaries), std::end(binaries), isop);
+    if (rhs != ""s and notunary and notbinary)
+      rhs = "alias("s + rhs + ")"s;
+  }
 
   return lhs_rhs;
 }
@@ -386,8 +388,14 @@ auto binning_expression(const std::string &expression, int fine_splitting)
 /// segfaults at dataset.analyze() if the source promotion is done within make_collection for yet to be understood reasons
 auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight)
 {
+  static const std::vector<std::string> unaries = {"constant("s, "alias("s,
+                                                   "exp("s, "log("s, "log10("s,
+                                                   "sin("s, "cos("s, "tan("s, "asin("s, "acos("s, "atan("s, "sqrt("s, "abs("s,
+                                                   "negate("s, "relu("s, "step("s, "invert("s, "not("s};
+  static const std::vector<std::string> binaries = {"*"s, "/"s, "+"s, "-"s};
+
   using namespace Framework;
-  //std::cout << "\n\n\n\nstart of make_histogram :: variables_and_binning"s << std::endl;
+  //std::cout << "\n\n\nstart of make_histogram :: variables_and_binning"s << std::endl;
 
   static const std::vector<int> fsplits = {12, 5, 3, 2};
   auto fsplit = (variables.size() > 2) ? fsplits.back() : fsplits[variables.size() - 1];
@@ -402,14 +410,14 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
-    expressions.emplace_back(single_expression(veb[0]));
+    expressions.emplace_back(single_expression(veb[0], unaries, binaries));
 
     const auto &[cedge, fedge] = binning_expression(veb[1], fsplit);
     cedges.emplace_back( std::move(cedge) );
     fedges.emplace_back( std::move(fedge) );
   }
 
-  auto we = single_expression(weight);
+  auto we = single_expression(weight, unaries, binaries);
   if (weight != ""s)
     expressions.emplace_back(we);
 
@@ -421,14 +429,14 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
   }
   std::cout << "     ----------------     "s << std::endl;
   ****/
-  parse_expressions(expressions);
+  parse_expressions(expressions, unaries, binaries);
   /****
   for (auto &exp : expressions) {
     for (auto &var : exp)
       std::cout << var << " -- "s;
     std::cout << std::endl;
   }
-  std::cout << "     ----------------     "s << std::endl;
+  std::cout << "     ----------------     \n\n\n"s << std::endl;
   ****  end testing of expression parser  ****/
 
   return std::make_tuple(std::move(expressions), std::move(cedges), std::move(fedges), we[0]);
@@ -445,6 +453,7 @@ auto make_collection(const std::tuple<
                      const std::vector<std::string> &files, const std::string &tree)
 {
   using namespace Framework;
+  //std::cout << "\n\n\nstart of make_histogram :: make_collection"s << std::endl;
 
   const auto &variables = std::get<0>(variables_bins);
   if (variables.empty())
