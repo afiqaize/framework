@@ -298,6 +298,85 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 
 
 
+/// splits a single expression into its parts, ready to be parsed
+auto single_expression(const std::string &expression)
+{
+  auto lhs_rhs = split(expression, "="s);
+  if (lhs_rhs.size() != 1 and lhs_rhs.size() != 2) {
+    std::cerr << "Variable or expression "s << expression << " is invalid"s << std::endl;
+    throw std::runtime_error( "ERROR: make_histogram::single_expression is provided an invalid expression. Aborting."s );
+  }
+
+  for (auto &s : lhs_rhs)
+    strip(s);
+
+  if (not valid_name(lhs_rhs[0])) {
+    std::cerr << "Invalid variable name "s << lhs_rhs[0] << ". Aborting. Current version considers only names containing " 
+      "alphanumeric characters or underscores"s << std::endl;
+    throw std::runtime_error( "ERROR: make_histogram::single_expression is provided an invalid expression. Aborting."s );
+  }
+
+  if (lhs_rhs.size() == 2 and lhs_rhs[0] == lhs_rhs[1])
+    lhs_rhs[1] = ""s;
+
+  return lhs_rhs;
+}
+
+
+
+/// parse the bin edges from the expression
+/// coarse edges are the requested binning in the expression
+/// fine edges are coarse edges uniformly split by fine_splitting
+auto binning_expression(const std::string &expression, int fine_splitting)
+{
+  std::vector<double> coarse, fine;
+
+  auto binstyle = split(expression, ";"s);
+  int nbinf = (binstyle.size() == 2) ? std::stoi(binstyle[0]) : 0;
+  const auto [minf, maxf] = [&binstyle] () {
+    const auto minmax = (binstyle.size() == 2) ? split(binstyle[1], ","s) : std::vector<std::string>{};
+    return (minmax.size() == 2) ? std::make_pair(std::stod(minmax[0]), std::stod(minmax[1])) : std::make_pair(0., 0.); 
+  } ();
+
+  if (nbinf > 1 and minf < maxf) {
+    coarse = make_interval(minf, maxf, (maxf - minf) / nbinf);
+    fine = (fine_splitting > 1) ? make_interval(minf, maxf, (maxf - minf) / (fine_splitting * nbinf)) : coarse;
+  }
+  else {
+    coarse = [&binning = expression] {
+      std::vector<double> coarse;
+      if (contain(binning, ";"s))
+        return coarse;
+
+      const auto binrng = split(binning, ","s);
+      for (const auto &edge : binrng)
+        coarse.emplace_back(std::stod(edge));
+      return coarse;
+    }();
+
+    fine = [&coarse, fine_splitting] {
+      if (fine_splitting < 2)
+        return coarse;
+
+      std::vector<double> fine = {coarse[0]};
+      for (int ic = 0; ic < coarse.size() - 1; ++ic)
+        fill_interval(fine, coarse[ic + 1], (coarse[ic + 1] - coarse[ic]) / fine_splitting);
+
+      return fine;
+    }();
+  }
+
+  auto isvalid = [] (std::vector<double> &edges) { return edges.size() > 2 and std::is_sorted(std::begin(edges), std::end(edges)); };
+  if (not isvalid(coarse)) {
+    std::cerr << "Binning information for expression "s << expression << " is invalid. Note that variables with only one bin is not accepted"s << std::endl;
+    throw std::runtime_error( "ERROR: make_histogram::binning_expression is provided an invalid expression. Aborting."s );
+  }
+
+  return std::make_pair(std::move(coarse), std::move(fine));
+}
+
+
+
 /// arguments: vector of strings as expected by --variable and --weight CL options, and input file names for source branch promotion to double
 /// returns a tuple containing three vectors
 /// first contains variables and (parsed) expressions information
@@ -323,77 +402,16 @@ auto variables_and_binning(const std::vector<std::string> &variables, const std:
       return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
     }
 
-    auto ve = split(veb[0], "="s);
-    if (ve.size() != 1 and ve.size() != 2) {
-      std::cerr << "Variable or expression "s << veb[0] << " is invalid"s << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
-    }
-    strip(ve[0]);
-    if (not valid_name(ve[0])) {
-      std::cerr << "Invalid variable name "s << ve[0] << ". Aborting. Current version considers only names containing " 
-        "alphanumeric characters or underscores"s << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
-    }
+    expressions.emplace_back(single_expression(veb[0]));
 
-    if (ve.size() == 2)
-      strip(ve[1]);
-    else
-      ve.emplace_back(""s);
-    expressions.emplace_back(std::move(ve));
-
-    auto binstyle = split(veb[1], ";"s);
-    int nbinf = (binstyle.size() == 2) ? std::stoi(binstyle[0]) : 0;
-    const auto [minf, maxf] = [&binstyle] () {
-      const auto minmax = (binstyle.size() == 2) ? split(binstyle[1], ","s) : std::vector<std::string>{};
-      return (minmax.size() == 2) ? std::make_pair(std::stod(minmax[0]), std::stod(minmax[1])) : std::make_pair(0., 0.); 
-    } ();
-
-    const auto cedge = [&binning = veb[1]] {
-      std::vector<double> cedge;
-      if (contain(binning, ";"s))
-        return cedge;
-
-      const auto binrng = split(binning, ","s);
-      for (const auto &edge : binrng)
-        cedge.emplace_back(std::stod(edge));
-      return cedge;
-    }();
-
-    if (nbinf > 1 and minf < maxf) {
-      cedges.emplace_back( make_interval(minf, maxf, (maxf - minf) / nbinf) );
-      fedges.emplace_back( make_interval(minf, maxf, (maxf - minf) / (fsplit * nbinf)) );
-    }
-    else if (cedge.size() > 2 and std::is_sorted(std::begin(cedge), std::end(cedge))) {
-      fedges.emplace_back( [&cedge, fsplit] {
-        std::vector<double> fedge = {cedge[0]};
-        for (int ic = 0; ic < cedge.size() - 1; ++ic)
-          fill_interval(fedge, cedge[ic + 1], (cedge[ic + 1] - cedge[ic]) / fsplit);
-
-        return fedge;
-      }() );
-      cedges.emplace_back( std::move(cedge) );
-    }
-    else {
-      std::cerr << "Binning information for variable  "s << ve[0] << " is invalid. Note that variables with only one bin is not accepted"s << std::endl;
-      return std::make_tuple(std::vector<std::vector<std::string>>{}, std::vector<std::vector<double>>{}, std::vector<std::vector<double>>{}, ""s);
-    }
+    const auto &[cedge, fedge] = binning_expression(veb[1], fsplit);
+    cedges.emplace_back( std::move(cedge) );
+    fedges.emplace_back( std::move(fedge) );
   }
 
-  auto we = split(weight, "="s);
-  strip(we[0]);
-  if (weight != ""s) {
-    if (valid_name(we[0])) {
-      if (we.size() == 2)
-        strip(we[1]);
-      else
-        we.emplace_back(""s);
-      expressions.emplace_back(we);
-    }
-    else {
-      std::cerr << "Invalid weight name "s << we[0] << ". Ignoring the weight. Current version considers only names containing " 
-        "alphanumeric characters or underscores"s << std::endl;
-    }
-  }
+  auto we = single_expression(weight);
+  if (weight != ""s)
+    expressions.emplace_back(we);
 
   /**** start testing of expression parser ****
   for (auto &exp : expressions) {
