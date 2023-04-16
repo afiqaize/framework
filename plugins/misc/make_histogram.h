@@ -58,15 +58,21 @@ double constant_str_value(const std::string &str)
 
 
 /// is a string elementary or not; if yes, returns a vector of string containing its name, the operation involved and the operands
-/// op1(a) and a op2 b are both elementary, anything else are not
+/// unary op1(a) and single binary expressions a op2 b are both elementary, anything else are not
 /// op1/op2 can be any of the supported unary/binary operations
+/// special case unary-less expression a = b is treated as a = alias(b)
 /// and a, b are valid names i.e. containing only alphanumeric + underscores
 std::vector<std::string> is_elementary(const std::string &expression, const std::vector<std::string> &unaries, const std::vector<std::string> &binaries)
 {
   const auto iop = expression.find("("), icl = expression.find(")");
 
+  // case without parenthesis - either a op b or just a 
   if (iop == std::string::npos and icl == std::string::npos) {
+    // treat it assuming single binary a op b, and include a check for neither single nor multi binary a op1 b op2 c ...
+    bool isbinary = false;
     for (const auto &binary : binaries) {
+      isbinary = isbinary or contain(expression, binary);
+
       auto ebi = split(expression, binary);
       if (ebi.size() == 2) {
 
@@ -74,6 +80,11 @@ std::vector<std::string> is_elementary(const std::string &expression, const std:
           return {random_variable_name(3), binary, ebi[0], ebi[1]};
       }
     }
+
+    // only unary-less and multi binary expressions reach this part
+    // remove the latter, and force the former to mean a = alias(b)
+    if (not isbinary)
+      return {random_variable_name(3), "alias(", expression};
   }
   else if (iop != std::string::npos and icl == expression.size() - 1) {
     for (const auto &unary : unaries) {
@@ -297,6 +308,7 @@ void parse_expressions(std::vector<std::vector<std::string>> &expressions)
 auto variables_and_binning(const std::vector<std::string> &variables, const std::string &weight)
 {
   using namespace Framework;
+  //std::cout << "\n\n\n\nstart of make_histogram :: variables_and_binning"s << std::endl;
 
   static const std::vector<int> fsplits = {12, 5, 3, 2};
   auto fsplit = (variables.size() > 2) ? fsplits.back() : fsplits[variables.size() - 1];
