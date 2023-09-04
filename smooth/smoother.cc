@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
                                       + "variables and expressions are always interpreted as double-precision floating-point. "
                                       + "be warned that this may lead to loss of data due to narrowing conversions. "
                                       + "under- and overflows are automatically added to the first and last bins respectively. "
+                                      + "if nonexistent branches are requested, a default of integer 1 is used. "
                                       + "use the option multiple times to make a multidimensional histogram.", true, "string", cmdbase);
   TCLAP::MultiArg<std::string> cmdweight("", "weight", "branch name to be used as weight. also accepts expressions (see --variable). "s
                                          + "has to be called 3 times if --type is weight i.e. systematic variations are in the form of event weights. "
