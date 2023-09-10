@@ -75,7 +75,7 @@ namespace Framework {
     /// getter methods
     long long current_entry(long long entry) const;
 
-    const std::unique_ptr<Tree>& tree() const;
+    const std::unique_ptr<Tree>& tree(int ispecify = -1) const;
 
     double get_weight(const std::string &wgt_name) const;
 

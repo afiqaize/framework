@@ -137,9 +137,10 @@ long long Framework::Dataset<Tree>::current_entry(long long entry) const
 
 
 template <typename Tree>
-const std::unique_ptr<Tree>& Framework::Dataset<Tree>::tree() const
+const std::unique_ptr<Tree>& Framework::Dataset<Tree>::tree(int ispecify /*= -1*/) const
 {
   static int ifile = 0;
+  ifile = (ispecify > -1 and ispecify < n_files()) ? ispecify : ifile;
   if (ifile >= n_files())
     throw std::runtime_error( "ERROR: Dataset::tree already loaded the last available tree!! Ensure that all requested branches exist in at least one file in the Dataset!!" );
   current_entry(v_entry[ifile++]);
