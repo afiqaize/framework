@@ -6,6 +6,7 @@
 #define FWK_DATASET_H
 
 #include "Allocator.h"
+#include "TError.h"
 #include "TTree.h"
 #include "TChain.h"
 
