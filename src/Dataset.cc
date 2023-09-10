@@ -17,7 +17,7 @@ Framework::Dataset<Tree>::Dataset(const std::string &name_, const std::string &t
   allocator(Allocator{}),
   analyzer(nullptr),
   v_weight({})
-{}
+{ gErrorIgnoreLevel = kBreak; }
 
 
 
