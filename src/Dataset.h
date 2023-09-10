@@ -115,6 +115,9 @@ namespace Framework {
     /// filenames
     std::vector<std::string> v_file;
 
+    /// entry counts for each file
+    std::vector<long long> v_entry;
+
     /// to re-evaluate only when file list is changed, regardless of associate calls
     bool evaluated;
 

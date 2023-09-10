@@ -11,6 +11,7 @@ Framework::Dataset<Tree>::Dataset(const std::string &name_, const std::string &t
   tree_struct(tree_struct_),
   tree_delim(tree_delim_),
   v_file(v_file_),
+  v_entry({}),
   evaluated(false),
   tree_ptr(nullptr),
   allocator(Allocator{}),
@@ -138,6 +139,10 @@ long long Framework::Dataset<Tree>::current_entry(long long entry) const
 template <typename Tree>
 const std::unique_ptr<Tree>& Framework::Dataset<Tree>::tree() const
 {
+  static int ifile = 0;
+  if (ifile >= n_files())
+    throw std::runtime_error( "ERROR: Dataset::tree already loaded the last available tree!! Ensure that all requested branches exist in at least one file in the Dataset!!" );
+  current_entry(v_entry[ifile++]);
   return tree_ptr;
 }
 
@@ -228,6 +233,9 @@ void Framework::Dataset<Tree>::reset()
   v_file.clear();
   v_file.shrink_to_fit();
 
+  v_entry.clear();
+  v_entry.shrink_to_fit();
+
   evaluated = false;
 
   if (tree_ptr != nullptr) {
@@ -261,8 +269,10 @@ void Framework::Dataset<TChain>::evaluate()
   }
 
   for (const auto &file : v_file) {
-    if (std::filesystem::is_regular_file(file))
+    if (std::filesystem::is_regular_file(file)) {
       tree_ptr->Add(file.c_str());
+      v_entry.emplace_back(tree_ptr->GetEntries() - 1LL);
+    }
     else
       throw std::runtime_error( "ERROR: Dataset::evaluate: file " + file + " is not accessible by the program!!" );
   }
