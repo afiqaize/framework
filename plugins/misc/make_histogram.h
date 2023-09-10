@@ -465,7 +465,7 @@ auto make_collection(const std::tuple<
   FwkColl coll("coll"s, variables.size());
   for (const auto &var : variables) {
     if (var.size() == 2 and var[1] == ""s and not contain(var[0], "__cv__"s))
-      coll.add_attribute(var[0], var[0], 1);
+      coll.add_attribute(var[0], var[0], 0);
   }
 
   // figure out the types of the attributes based on the first file in dataset
