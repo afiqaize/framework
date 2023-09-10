@@ -58,7 +58,7 @@ namespace Framework {
     bool add_file(const std::string &file);
 
     /// return the number of currently held filenames
-    int n_files();
+    int n_files() const;
 
     /// add a new weight to v_weight
     /// true if successful i.e. no weight already has that name

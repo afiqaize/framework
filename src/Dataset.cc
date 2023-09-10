@@ -82,7 +82,7 @@ bool Framework::Dataset<Tree>::add_file(const std::string &file)
 
 
 template <typename Tree>
-int Framework::Dataset<Tree>::n_files()
+int Framework::Dataset<Tree>::n_files() const
 {
   return v_file.size();
 }
