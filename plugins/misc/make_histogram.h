@@ -320,6 +320,8 @@ auto single_expression(const std::string &expression, const std::vector<std::str
     if (rhs != ""s and notunary and notbinary)
       rhs = "alias("s + rhs + ")"s;
   }
+  else
+    lhs_rhs.emplace_back(""s);
 
   return lhs_rhs;
 }
