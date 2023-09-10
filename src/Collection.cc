@@ -98,7 +98,7 @@ template <typename ...Ts>
 template <typename Tree>
 void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
 {
-  tree = dataset.tree().get();
+  tree = dataset.tree(0).get();
 
   if (counter_name != "") {
     auto leaf = tree->GetLeaf(counter_name.c_str());
