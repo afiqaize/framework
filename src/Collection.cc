@@ -126,10 +126,13 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
 
     // retype branch based on type found in file
     auto leaf = tree->GetLeaf(branch_name.c_str());
-    if (leaf == nullptr)
+    while (leaf == nullptr) {
       leaf = tree->FindLeaf(branch_name.c_str());
-    if (leaf == nullptr)
-      throw std::runtime_error( "ERROR: Collection::associate: unable to find the requested branch " + branch_name + "!!!" );
+      if (leaf != nullptr)
+        break;
+
+      tree = dataset.tree().get();
+    }
 
     if (const std::string btype = leaf->GetTypeName(); btype == "Int_t")
       Group<Ts...>::template retype<int>(this->v_data[iB]);
@@ -154,7 +157,7 @@ void Framework::Collection<Ts...>::associate(Dataset<Tree> &dataset)
                                 + "!!! If it should have been supported, please add it and/or contact the developer.");
 
     tree->SetBranchStatus(branch_name.c_str(), 1);
-    std::visit([this, &branch = branch, &branch_name = branch_name] (auto &vec) { 
+    std::visit([this, &branch = branch, &branch_name = branch_name] (auto &vec) {
         tree->SetBranchAddress(branch_name.c_str(), vec.data(), &branch);
       }, this->v_data[iB]);
     branch->SetAutoDelete(false);
